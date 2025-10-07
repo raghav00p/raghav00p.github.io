@@ -1,6 +1,7 @@
 {
-  "name": "fuck",
-  "short_name": "fuck",
+  "name": "pwa",
+  "short_name": "pwa",
+  "description": "this is my app"
   "start_url": "./",
   "scope":"./"
   "display": "standalone",
