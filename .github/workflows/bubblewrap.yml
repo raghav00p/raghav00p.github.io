@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64   # Force Bubblewrap to see JDK
+      JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
 
     steps:
       - name: Checkout code
@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Java 17 (Temurin)
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -27,28 +27,39 @@ jobs:
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli
 
-      - name: Initialize project (completely non-interactive)
+      - name: Create config file
         run: |
-          bubblewrap init \
-            --manifest=https://raghav00p.github.io/manifest.json \
-            --skipValidation \
-            --nonInteractive \
-            --directory=. \
-            --manifestUrl=https://raghav00p.github.io/manifest.json \
-            --jdkPath=$JAVA_HOME
+          mkdir -p twa
+          cat <<'EOF' > twa/twa-manifest.json
+          {
+            "packageId": "com.example.pwa",
+            "host": "raghav00p.github.io",
+            "name": "My PWA",
+            "launcherName": "MyPWA",
+            "display": "standalone",
+            "themeColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "startUrl": "/",
+            "iconUrl": "https://raghav00p.github.io/icons/icon-192.png",
+            "navigationColor": "#000000",
+            "navigationColorDark": "#000000",
+            "navigationDividerColor": "#000000",
+            "navigationDividerColorDark": "#000000",
+            "orientation": "portrait",
+            "fullScopeUrl": "https://raghav00p.github.io/",
+            "maskableIconUrl": "https://raghav00p.github.io/icons/icon-512.png",
+            "enableNotifications": false
+          }
+          EOF
 
-      - name: Build APK (no prompt)
-        run: bubblewrap build --jdkPath=$JAVA_HOME --no-prompt
+      - name: Initialize and build (non-interactive)
+        run: |
+          cd twa
+          bubblewrap init --manifest=twa-manifest.json --skipValidation --nonInteractive --directory=. --jdkPath=$JAVA_HOME
+          bubblewrap build --jdkPath=$JAVA_HOME --no-prompt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: built-apk
-          path: ./output/      - name: Build APK (no prompt)
-        run: bubblewrap build --no-prompt
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: built-apk
-          path: ./output/
+          path: twa/output/
