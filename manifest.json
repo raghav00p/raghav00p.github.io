@@ -1,7 +1,7 @@
 {
   "name": "pwa",
   "short_name": "pwa",
-  "description": "this is my app"
+  "description": "this is my app",
   "start_url": "./",
   "scope":"./",
   "display": "standalone",
