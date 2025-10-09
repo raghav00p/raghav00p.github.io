@@ -6,6 +6,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64   # Force Bubblewrap to see JDK
 
     steps:
       - name: Checkout code
@@ -16,7 +18,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Java (prevents JDK prompt)
+      - name: Setup Java 17 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -25,16 +27,24 @@ jobs:
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli
 
-      - name: Initialize project (non-interactive)
+      - name: Initialize project (completely non-interactive)
         run: |
           bubblewrap init \
             --manifest=https://raghav00p.github.io/manifest.json \
             --skipValidation \
             --nonInteractive \
             --directory=. \
-            --manifestUrl=https://raghav00p.github.io/manifest.json
+            --manifestUrl=https://raghav00p.github.io/manifest.json \
+            --jdkPath=$JAVA_HOME
 
       - name: Build APK (no prompt)
+        run: bubblewrap build --jdkPath=$JAVA_HOME --no-prompt
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-apk
+          path: ./output/      - name: Build APK (no prompt)
         run: bubblewrap build --no-prompt
 
       - name: Upload APK
