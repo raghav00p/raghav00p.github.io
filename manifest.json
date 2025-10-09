@@ -3,7 +3,7 @@
   "short_name": "pwa",
   "description": "this is my app"
   "start_url": "./",
-  "scope":"./"
+  "scope":"./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#317EFB",
