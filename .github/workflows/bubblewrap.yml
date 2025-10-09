@@ -16,14 +16,25 @@ jobs:
         with:
           node-version: 20
 
+      - name: Setup Java (prevents JDK prompt)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli
 
       - name: Initialize project (non-interactive)
         run: |
-          bubblewrap init --manifest=https://raghav00p.github.io/manifest.json --skipValidation --nonInteractive --directory=. --manifestUrl=https://raghav00p.github.io/manifest.json
+          bubblewrap init \
+            --manifest=https://raghav00p.github.io/manifest.json \
+            --skipValidation \
+            --nonInteractive \
+            --directory=. \
+            --manifestUrl=https://raghav00p.github.io/manifest.json
 
-      - name: Build APK
+      - name: Build APK (no prompt)
         run: bubblewrap build --no-prompt
 
       - name: Upload APK
