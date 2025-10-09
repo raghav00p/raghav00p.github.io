@@ -13,7 +13,7 @@ jobs:
         run: npm install -g @bubblewrap/cli
       - name: Build APK
         run: |
-          bubblewrap init --manifest https://yourpwa.com/manifest.json --skipValidation
+          bubblewrap init --manifest https://raghav00p.github.io/manifest.json --skipValidation
           bubblewrap build
       - uses: actions/upload-artifact@v4
         with:
