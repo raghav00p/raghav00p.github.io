@@ -1,0 +1,21 @@
+name: Build PWA to APK
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Bubblewrap
+        run: npm install -g @bubblewrap/cli
+      - name: Build APK
+        run: |
+          bubblewrap init --manifest https://yourpwa.com/manifest.json --skipValidation
+          bubblewrap build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: ./output/
