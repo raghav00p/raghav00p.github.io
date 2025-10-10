@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #f8f8f8;
+}
+
+.container {
+    display: flex;
+    width: 80%;
+    gap: 20px;
+}
+
+.categories, .flashcards {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 50%;
+}
+
+button {
+    padding: 10px;
+    border: none;
+    background: #007BFF;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:disabled {
+    background: grey;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+li {
+    display: inline-block;
+    padding: 10px 15px;
+    background: #ff9800; /* Change to desired color */
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+li:hover {
+    background: #e68900; /* Darker shade on hover */
+}
+.flashcard {
+    width: 200px;
+    height: 200px;
+    margin: 10px;
+    perspective: 1000px;
+    display: inline-block;
+}
+
+.flashcard-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.5s;
+}
+
+.flashcard.flipped .flashcard-inner {
+    transform: rotateY(180deg);
+}
+
+.flashcard-front, .flashcard-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffeb3b;
+    border-radius: 5px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+}
+
+.flashcard-back {
+    transform: rotateY(180deg);
+    background: #03a9f4;
+    color: white;
+}</style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="categories">
+            <h2>Categories</h2>
+            <button onclick="addCategory()">➕ Add Category</button>
+            <ul id="categoryList"></ul>
+        </div>
+
+        <div class="flashcards">
+            <h2 id="flashcardTitle">Flashcards</h2>
+            <button id="addFlashcardBtn" onclick="addFlashcard()" disabled>➕ Add Flashcard</button>
+            <div id="flashcardContainer"></div>
+        </div>
+    </div>
+
+    <script>let db;
+let currentCategory = null;
+
+// Open IndexedDB database
+function openDatabase() {
+    let request = indexedDB.open("FlashcardsDB", 1);
+
+    request.onupgradeneeded = function(event) {
+        db = event.target.result;
+        if (!db.objectStoreNames.contains("categories")) {
+            let store = db.createObjectStore("categories", { keyPath: "name" });
+        }
+    };
+
+    request.onsuccess = function(event) {
+        db = event.target.result;
+        loadCategories();
+    };
+
+    request.onerror = function(event) {
+        console.error("Database error:", event.target.errorCode);
+    };
+}
+
+// Save category in IndexedDB
+function saveCategory(categoryName) {
+    let transaction = db.transaction(["categories"], "readwrite");
+    let store = transaction.objectStore("categories");
+    store.add({ name: categoryName, flashcards: [] });
+}
+
+// Load categories from IndexedDB
+function loadCategories() {
+    let transaction = db.transaction(["categories"], "readonly");
+    let store = transaction.objectStore("categories");
+    let request = store.getAll();
+
+    request.onsuccess = function(event) {
+        let categories = event.target.result;
+        renderCategories(categories);
+    };
+}
+
+// Add a new category
+function addCategory() {
+    let categoryName = prompt("Enter category name:");
+    if (categoryName) {
+        let transaction = db.transaction(["categories"], "readwrite");
+        let store = transaction.objectStore("categories");
+
+        let request = store.get(categoryName);
+        request.onsuccess = function(event) {
+            if (!event.target.result) {
+                saveCategory(categoryName);
+                loadCategories(); 
+            } else {
+                alert("Category already exists!");
+            }
+        };
+    }
+}
+
+// Delete a category
+function deleteCategory(categoryName) {
+    if (confirm(`Delete category '${categoryName}'?`)) {
+        let transaction = db.transaction(["categories"], "readwrite");
+        let store = transaction.objectStore("categories");
+        store.delete(categoryName);
+        loadCategories();
+        document.getElementById("flashcardTitle").innerText = "Flashcards";
+        document.getElementById("addFlashcardBtn").disabled = true;
+        document.getElementById("flashcardContainer").innerHTML = "";
+    }
+}
+
+// Render categories in the UI
+function renderCategories(categories) {
+    let categoryList = document.getElementById("categoryList");
+    categoryList.innerHTML = "";
+    categories.forEach(category => {
+        let li = document.createElement("li");
+        li.innerText = category.name;
+        li.addEventListener("click", () => openCategory(category.name));
+        li.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            deleteCategory(category.name);
+        });
+        categoryList.appendChild(li);
+    });
+}
+
+// Open a category
+function openCategory(categoryName) {
+    currentCategory = categoryName;
+    document.getElementById("flashcardTitle").innerText = categoryName;
+    document.getElementById("addFlashcardBtn").disabled = false;
+    loadFlashcards(categoryName);
+}
+
+// Add a new flashcard
+function addFlashcard() {
+    if (!currentCategory) return;
+
+    let frontText = prompt("Enter flashcard front text:");
+    let backText = prompt("Enter flashcard back text:");
+
+    if (frontText && backText) {
+        let transaction = db.transaction(["categories"], "readwrite");
+        let store = transaction.objectStore("categories");
+        let request = store.get(currentCategory);
+
+        request.onsuccess = function(event) {
+            let category = event.target.result;
+            category.flashcards.push({ front: frontText, back: backText });
+
+            let updateRequest = store.put(category);
+            updateRequest.onsuccess = function() {
+                loadFlashcards(currentCategory);
+            };
+        };
+    }
+}
+
+// Load flashcards for the selected category
+function loadFlashcards(categoryName) {
+    let transaction = db.transaction(["categories"], "readonly");
+    let store = transaction.objectStore("categories");
+    let request = store.get(categoryName);
+
+    request.onsuccess = function(event) {
+        let category = event.target.result;
+        renderFlashcards(category.flashcards);
+    };
+}
+
+// Delete a flashcard
+function deleteFlashcard(index) {
+    if (!confirm("Are you sure you want to delete this flashcard?")) {
+        return; // Stop execution if the user cancels
+    }
+
+    let transaction = db.transaction(["categories"], "readwrite");
+    let store = transaction.objectStore("categories");
+    let request = store.get(currentCategory);
+
+    request.onsuccess = function(event) {
+        let category = event.target.result;
+        
+        if (!category) {
+            alert("Category not found!");
+            return;
+        }
+        
+        category.flashcards.splice(index, 1);
+
+        let updateRequest = store.put(category);
+        updateRequest.onsuccess = function() {
+            loadFlashcards(currentCategory);
+        };
+
+        updateRequest.onerror = function() {
+            alert("Error deleting flashcard.");
+        };
+    };
+
+    request.onerror = function() {
+        alert("Error retrieving category.");
+    };
+}
+
+// Render flashcards in the UI
+function renderFlashcards(flashcards) {
+    let flashcardContainer = document.getElementById("flashcardContainer");
+    flashcardContainer.innerHTML = "";
+
+    flashcards.forEach((card, index) => {
+        let flashcard = document.createElement("div");
+        flashcard.classList.add("flashcard");
+        flashcard.innerHTML = `
+            <div class="flashcard-inner">
+                <div class="flashcard-front">${card.front}</div>
+                <div class="flashcard-back">${card.back}</div>
+            </div>
+        `;
+        flashcard.addEventListener("click", () => flashcard.classList.toggle("flipped"));
+        flashcard.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            deleteFlashcard(index);
+        });
+
+        flashcardContainer.appendChild(flashcard);
+    });
+}
+
+// Open the database when the page loads
+window.onload = openDatabase;</script>
+</body>
+</html>
