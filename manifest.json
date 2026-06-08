@@ -1,25 +1,25 @@
 {
-  "name": "flint",
-  "short_name": "flint",
-  "description": "flint",
-  "id": "/",
-  "scope": "/",
+  "name": "My Progressive Web App",
+  "short_name": "My PWA",
+  "description": "A basic progressive web app",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#2196F3",
   "background_color": "#ffffff",
-  "theme_color": "#317EFB",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ]
 }
