@@ -1,6 +1,7 @@
 {
   "name": "flint",
   "short_name": "flint",
+  "description": "flint"
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
