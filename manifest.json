@@ -1,9 +1,7 @@
 {
   "name": "flint",
   "short_name": "flint",
-  "description": "this is my app",
-  "start_url": "/",
-  "scope":"/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#317EFB",
