@@ -2,8 +2,9 @@
   "name": "flint",
   "short_name": "flint",
   "description": "flint",
-  "id": "flint"
-  "start_url": "raghav00p.github.io",
+  "id": "flint",
+  "scope": ".",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#317EFB",
