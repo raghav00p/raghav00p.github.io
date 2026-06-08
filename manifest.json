@@ -1,6 +1,6 @@
 {
-  "name": "pwa",
-  "short_name": "pwa",
+  "name": "flint",
+  "short_name": "flint",
   "description": "this is my app",
   "start_url": "/",
   "scope":"/",
