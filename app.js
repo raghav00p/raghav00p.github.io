@@ -10,7 +10,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Handle install button
-let deferredPrompt;
+//let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
