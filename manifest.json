@@ -1,7 +1,7 @@
 {
-  "name": "My Progressive Web App",
-  "short_name": "My PWA",
-  "description": "A basic progressive web app",
+  "name": "Master Mind",
+  "short_name": "Master Mind",
+  "description": "Master Mind",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
