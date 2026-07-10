@@ -79,6 +79,7 @@
     if (styleInjected) return;
     styleInjected = true;
     const css =
+      ':where([l-sort]) > * { touch-action: none; }' +
       ':where(.l-ghost) { opacity: .4; background: rgba(0,0,0,.06); border: 1px dashed rgba(0,0,0,.3); }' +
       ':where(.l-drag) { cursor: grabbing; }';
     const tag = document.createElement('style');
