@@ -10,6 +10,7 @@
     
     <!-- Link to manifest file -->
     <link rel="manifest" href="manifest.json">
+    <script src="alpine.js" defer></script>
     
     <!-- iOS specific meta tags -->
     <link rel="icon" sizes="192×192" type="image/png" href="icons/icon-192.png">
@@ -34,8 +35,8 @@
         }
     </style>
 </head>
-<body>
-    <h1>Welcome to My PWA</h1>
+<body x-data="{hi: 8}">
+    <h1 @click="alert(hi)" >Welcome to My PWA</h1>
     <p>This app works offline!</p>
     <button id="installBtn">Install App</button>
     
