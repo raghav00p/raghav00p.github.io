@@ -32,7 +32,7 @@ class Component extends HTMLElement {
       }
     });
 
-    if (window.Alpine) Alpine.initTree(this);
+   // if (window.Alpine) Alpine.initTree(this);
   }
 }
 customElements.define("x-component", Component);
