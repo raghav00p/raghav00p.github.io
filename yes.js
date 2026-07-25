@@ -1,7 +1,7 @@
 // tiny-component.js
 // <x-component src="fragment.html"></x-component>
 // Fetches an HTML fragment, injects it, and runs any inline <script>
-// tag inside it — exactly once per element instance.
+// tag inside it — exactly once per src, ever.
 
 // ---- fragment cache ---------------------------------------------------
 // Several <x-component> can point at the same src at once (e.g. one
@@ -27,10 +27,7 @@ function getFragment(src) {
 // of replacing it, so several fragments can each own a piece of the same
 // store. `init()` on a slice (or on any object nested in the slice) runs
 // exactly once — not once per contribute() *call*, but once per logical
-// path, ever. That distinction matters now: a fragment's script can
-// legitimately run several times (once per sibling instance), and each
-// run builds a brand-new slice object with its own `init` function, so
-// dedupe has to be keyed by name/path, not by object identity.
+// path, ever.
 const initializedPaths = new Set();
 
 function contribute(name, slice) {
@@ -57,6 +54,58 @@ function contribute(name, slice) {
   }
 }
 window.contribute = contribute;
+
+// ---- restricted fragment-script API -------------------------------------
+// A fragment's <script> is only allowed to call three things:
+//   contribute(name, slice)  — merge a slice into a shared store
+//   Alpine.data(name, fn)    — register a reusable x-data factory
+//   Alpine.bind(name, fn)    — register a reusable x-bind directive set
+// All three are *name-keyed registries*, not per-instance side effects:
+// registering twice under the same name is redundant, not meaningful.
+// So the script itself only needs to run once per src, ever — no matter
+// how many <x-component> instances share that src. Per-instance behavior
+// still happens per instance, because Alpine.initTree(this) below is what
+// actually invokes an x-data factory for a given element, and that still
+// runs on every connect.
+const AlpineRestricted = {
+  data: Alpine.data.bind(Alpine),
+  bind: Alpine.bind.bind(Alpine),
+};
+
+// NOTE: this is an API-surface convention, not a sandbox. Shadowing
+// `Alpine` and `contribute` as the only two arguments keeps fragment
+// authors on the three-function contract, but the function body still
+// closes over the real global scope (window, document, fetch, ...) —
+// `new Function` can't prevent that. If untrusted fragments are ever a
+// concern, this needs a real sandbox (iframe + postMessage) or a
+// build-time lint that rejects any top-level statement that isn't a
+// contribute(...), Alpine.data(...), or Alpine.bind(...) call.
+const executedFragments = new Set(); // src whose script has already run
+
+function runFragmentScript(root, src) {
+  const scripts = root.querySelectorAll("script");
+  if (executedFragments.has(src)) {
+    // Duplicate instance of an already-executed src: strip the script
+    // tags (innerHTML never runs them anyway) and stop — registering
+    // Alpine.data/Alpine.bind/contribute again would be pure waste.
+    scripts.forEach((s) => s.remove());
+    return;
+  }
+  executedFragments.add(src);
+  scripts.forEach((script) => {
+    script.remove();
+    try {
+      new Function("Alpine", "contribute", script.textContent)(
+        AlpineRestricted,
+        contribute
+      );
+    } catch (err) {
+      console.error(`x-component: script failed in ${src}`, err);
+      // Let a future connect (e.g. after a fix + reload) try again.
+      executedFragments.delete(src);
+    }
+  });
+}
 
 // ---- <x-component> ------------------------------------------------------
 class Component extends HTMLElement {
@@ -92,19 +141,11 @@ class Component extends HTMLElement {
 
     this.innerHTML = html;
 
-    // innerHTML never executes <script> tags — run them ourselves, once
-    // per *this* element. Not once per src: a fragment reused by several
-    // siblings (one details.html per task, one subtask.html per subtask)
-    // needs its script to run for every single one of them, not just
-    // whichever copy happened to load first.
-    this.querySelectorAll("script").forEach((script) => {
-      script.remove();
-      try {
-        new Function("Alpine", "contribute", script.textContent)(Alpine, contribute);
-      } catch (err) {
-        console.error(`x-component: script failed in ${src}`, err);
-      }
-    });
+    // innerHTML never executes <script> tags. Run it ourselves — but
+    // only once per src, ever (see runFragmentScript above). Every
+    // instance still needs Alpine.initTree() below so its own x-data
+    // binding actually instantiates.
+    runFragmentScript(this, src);
 
     if (window.Alpine) Alpine.initTree(this);
   }
