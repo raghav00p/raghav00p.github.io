@@ -3,7 +3,10 @@ const urlsToCache = [
   '/',
   '/index.html',
   '/app.js',
-  '/manifest.json'
+  '/manifest.json',
+  '/alpine.js',
+  '/chota.css',
+  '/run.js'
 ];
 
 // Install event
