@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory â€” chota.css + Alpine.js</title>
+
+<link rel="stylesheet" href="https://unpkg.com/chota@latest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<style>
+  [x-cloak]{display:none !important;}
+  :root{
+    --color-primary:#6c5ce7;
+    --color-error:#e0445b;
+    --color-success:#1abc9c;
+    --color-lightGrey:#e3e5ea;
+    --color-grey:#888fa3;
+    --color-darkGrey:#454a5c;
+    --font-family:'Inter', -apple-system, sans-serif;
+    --font-size:1.6rem;
+    --grid-maxWidth:90rem;
+  }
+  body.dark{
+    --bg-color:#11121a;
+    --bg-secondary-color:#191b26;
+    --font-color:#eceef5;
+    --color-lightGrey:#2a2d3d;
+    --color-grey:#9499b3;
+    --color-darkGrey:#c4c8dc;
+  }
+
+  body{transition:background .25s ease,color .25s ease;}
+  h1,h2,.brand{font-family:'Space Grotesk',sans-serif;}
+  nav.nav{position:sticky;top:0;background:var(--bg-color);z-index:20;}
+
+  .hero{padding:3.5rem 0 1rem;text-align:center;}
+  .hero p{color:var(--color-grey);max-width:50rem;margin:0 auto;}
+
+  .stat-card{text-align:center;padding:1.2rem .6rem; margin-top: 1rem;}
+  .stat-card .stat-label{font-size:1.1rem;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--color-grey);font-weight:600;}
+  .stat-card .stat-value{font-family:'Space Grotesk',sans-serif;font-size:2.4rem;line-height:1.3;}
+
+  .board-wrap{display:flex;justify-content:center;padding:1rem 0 3rem;}
+  .board{display:grid;gap:1.2rem;width:100%;}
+
+  .memory-card{aspect-ratio:1;cursor:pointer;perspective:80rem;}
+  .memory-card .card-inner{position:relative;width:100%;height:100%;
+    transition:transform .45s cubic-bezier(.2,.8,.2,1);transform-style:preserve-3d;}
+  .memory-card.is-flipped .card-inner,.memory-card.is-matched .card-inner{transform:rotateY(180deg);}
+  .memory-card .face{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    border-radius:.8rem;backface-visibility:hidden;font-size:clamp(2rem,5vw,3.2rem);
+    box-shadow:0 .2rem .6rem rgba(0,0,0,.08);}
+  .memory-card .face.front{background:linear-gradient(150deg,var(--color-primary),#9b8cf0);color:#fff;
+    font-family:'Space Grotesk',sans-serif;}
+  .memory-card .face.back{background:var(--bg-secondary-color);border:2px solid var(--color-lightGrey);
+    transform:rotateY(180deg);}
+  .memory-card.is-matched .face.back{border-color:var(--color-success);opacity:.55;}
+  .memory-card.is-wrong .face.back{border-color:var(--color-error);animation:shake .3s;}
+  @keyframes shake{25%{transform:rotateY(180deg) translateX(-.5rem);}75%{transform:rotateY(180deg) translateX(.5rem);}}
+
+  .overlay{position:fixed;inset:0;background:rgba(10,10,15,.55);display:none;
+    align-items:center;justify-content:center;z-index:50;padding:2rem;}
+  .overlay.is-active{display:flex;}
+  .overlay .card{max-width:38rem;text-align:center;}
+
+  footer.text-center{padding:3rem 0;color:var(--color-grey);}
+
+  /* fullscreen: body becomes the fullscreen element, so give it an explicit
+     background while fullscreen (browsers default to black otherwise) */
+  body:fullscreen{background:var(--bg-color);overflow:auto;}
+  body:-webkit-full-screen{background:var(--bg-color);overflow:auto;}
+</style>
+</head>
+<body x-data="game()" x-init="newGame(); initFullscreenSync();" :class="{dark: dark}" x-cloak>
+
+<nav class="nav container">
+  <div class="nav-left">
+    <a class="brand" href="#">ðŸ§  Memory</a>
+    <div class="tabs">
+      <template x-for="key in Object.keys(difficulties)" :key="key">
+        <a href="#" @click.prevent="setDifficulty(key)"
+           :class="{active: difficulty === key}"
+           x-text="difficulties[key].label"></a>
+      </template>
+    </div>
+  </div>
+  <div class="nav-right">
+    <button class="button outline" @click="toggleFullscreen()"
+            x-text="isFullscreen ? 'â¤¦ Exit fullscreen' : 'â›¶ Fullscreen'"></button>
+    <button class="button outline" style="margin-left:1rem;" @click="dark = !dark">ðŸŒ™ Dark mode</button>
+    <button class="button primary" style="margin-left:1rem;" @click="newGame()">New game</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="row">
+    <div class="col-3"><div class="card stat-card">
+      <div class="stat-label">Moves</div><div class="stat-value" x-text="moves"></div>
+    </div></div>
+    <div class="col-3"><div class="card stat-card">
+      <div class="stat-label">Time</div><div class="stat-value" x-text="timeLabel"></div>
+    </div></div>
+    <div class="col-3"><div class="card stat-card">
+      <div class="stat-label">Pairs</div><div class="stat-value" x-text="matchedCount + ' / ' + totalPairs"></div>
+    </div></div>
+    <div class="col-3"><div class="card stat-card">
+      <div class="stat-label">Best (this session)</div>
+      <div class="stat-value" x-text="bestLabel()"></div>
+    </div></div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" :style="boardStyle">
+      <template x-for="card in cards" :key="card.key">
+        <div class="memory-card"
+             :class="{'is-flipped': card.flipped, 'is-matched': card.matched, 'is-wrong': card.wrong}"
+             @click="flipCard(card)">
+          <div class="card-inner">
+            <div class="face front">?</div>
+            <div class="face back" x-text="card.value"></div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<footer class="text-center container">
+  <p>Layout &amp; components from chota.css (<code>.nav</code>, <code>.tabs</code>,
+    <code>.card</code>, <code>.button</code>, <code>.tag</code>) â€” all state, reactivity
+    and game logic handled declaratively by Alpine.js (<code>x-data</code>,
+    <code>x-for</code>, <code>x-bind</code>, <code>x-on</code>), no manual DOM code.</p>
+</footer>
+
+<div class="overlay" :class="{'is-active': showOverlay}">
+  <div class="card">
+    <header><h2>ðŸŽ‰ Solved it!</h2></header>
+    <p>You cleared the <strong x-text="difficulties[difficulty].label"></strong> board in
+      <strong x-text="moves"></strong> moves and <strong x-text="timeLabel"></strong>.</p>
+    <p class="text-success" x-show="isNewBest">New best for this difficulty ðŸ†</p>
+    <footer class="is-right">
+      <button class="button clear" @click="showOverlay = false">Close</button>
+      <button class="button primary" @click="newGame()">Play again</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+function game() {
+  return {
+    dark: false,
+    isFullscreen: false,
+    pool: ['ðŸŽ','ðŸ‹','ðŸ‡','ðŸ‰','ðŸ“','ðŸ’','ðŸ‘','ðŸ¥','ðŸ','ðŸ¥¥','ðŸŒ','ðŸ¥‘'],
+    difficulties: {
+      easy:   { label: 'Easy Â· 3Ã—4',   cols: 4, rows: 3 },
+      medium: { label: 'Medium Â· 4Ã—4', cols: 4, rows: 4 },
+      hard:   { label: 'Hard Â· 4Ã—6',   cols: 6, rows: 4 }
+    },
+    difficulty: 'easy',
+
+    cards: [],
+    flipped: [],
+    moves: 0,
+    seconds: 0,
+    matchedCount: 0,
+    totalPairs: 0,
+    lockBoard: false,
+    hasStarted: false,
+    timerId: null,
+    bestByDifficulty: {},   // session-only memory â€” resets on reload
+    showOverlay: false,
+    isNewBest: false,
+
+    get cols() {
+      return this.difficulties[this.difficulty].cols;
+    },
+    get boardStyle() {
+      return 'grid-template-columns: repeat(' + this.cols + ', minmax(5.5rem, 11rem));';
+    },
+    get timeLabel() {
+      var m = Math.floor(this.seconds / 60), s = this.seconds % 60;
+      return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    },
+
+    shuffle(arr) {
+      for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+      }
+      return arr;
+    },
+
+    buildDeck() {
+      var cfg = this.difficulties[this.difficulty];
+      var pairCount = (cfg.cols * cfg.rows) / 2;
+      var values = this.shuffle(this.pool.slice()).slice(0, pairCount);
+      return this.shuffle(values.concat(values));
+    },
+
+    newGame() {
+      this.showOverlay = false;
+      this.stopTimer();
+      var deck = this.buildDeck();
+      this.totalPairs = deck.length / 2;
+      this.cards = deck.map(function (value, i) {
+        return { value: value, flipped: false, matched: false, wrong: false,
+                 key: i + '-' + value + '-' + Math.random().toString(36).slice(2) };
+      });
+      this.flipped = [];
+      this.moves = 0;
+      this.seconds = 0;
+      this.matchedCount = 0;
+      this.hasStarted = false;
+      this.lockBoard = false;
+    },
+
+    setDifficulty(key) {
+      this.difficulty = key;
+      this.newGame();
+    },
+
+    startTimer() {
+      if (this.timerId) return;
+      var self = this;
+      this.timerId = setInterval(function () { self.seconds++; }, 1000);
+    },
+    stopTimer() {
+      clearInterval(this.timerId);
+      this.timerId = null;
+    },
+
+    flipCard(card) {
+      if (this.lockBoard || card.flipped || card.matched) return;
+      if (!this.hasStarted) { this.hasStarted = true; this.startTimer(); }
+
+      card.flipped = true;
+      this.flipped.push(card);
+
+      if (this.flipped.length === 2) {
+        this.moves++;
+        this.checkMatch();
+      }
+    },
+
+    checkMatch() {
+      var self = this;
+      var a = this.flipped[0], b = this.flipped[1];
+
+      if (a.value === b.value) {
+        a.matched = true;
+        b.matched = true;
+        this.matchedCount++;
+        this.flipped = [];
+        if (this.matchedCount === this.totalPairs) {
+          this.stopTimer();
+          setTimeout(function () { self.showWin(); }, 350);
+        }
+      } else {
+        this.lockBoard = true;
+        a.wrong = true;
+        b.wrong = true;
+        setTimeout(function () {
+          a.flipped = false; a.wrong = false;
+          b.flipped = false; b.wrong = false;
+          self.flipped = [];
+          self.lockBoard = false;
+        }, 700);
+      }
+    },
+
+    showWin() {
+      var best = this.bestByDifficulty[this.difficulty];
+      this.isNewBest = !best || this.moves < best.moves;
+      if (this.isNewBest) {
+        this.bestByDifficulty[this.difficulty] = { moves: this.moves, time: this.seconds };
+      }
+      this.showOverlay = true;
+    },
+
+    bestLabel() {
+      var b = this.bestByDifficulty[this.difficulty];
+      return b ? b.moves + ' moves' : 'â€”';
+    },
+
+    // --- fullscreen ---------------------------------------------------
+    // Toggling is button-driven (not a click-anywhere handler) so it
+    // never fights with card flips, tab switches, or the win overlay.
+    toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(function (err) {
+          console.error('Fullscreen request failed: ' + err.message);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    },
+    // Keep isFullscreen in sync even when the user exits via Esc or
+    // browser UI instead of the toggle button.
+    initFullscreenSync() {
+      var self = this;
+      document.addEventListener('fullscreenchange', function () {
+        self.isFullscreen = !!document.fullscreenElement;
+      });
+    }
+  };
+}
+</script>
+</body>
+</html>
