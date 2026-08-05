@@ -11,6 +11,8 @@
     <!-- Link to manifest file -->
     <link rel="manifest" href="manifest.json">
     <script src="alpine.js" defer></script>
+    <script src="run.js" defer></script>
+    <link rel="stylesheet" href="chota.css"/>
     
     <!-- iOS specific meta tags -->
     <link rel="icon" sizes="192×192" type="image/png" href="icons/icon-192.png">
@@ -35,9 +37,8 @@
         }
     </style>
 </head>
-<body x-data="{hi: 8}">
-    <h1 @click="alert(hi)" >Welcome to My PWA</h1>
-    <p>This app works offline!</p>
+<body>
+    <x-component src="memory.html"></x-component>
     <button id="installBtn">Install App</button>
     
     <script src="app.js"></script>
