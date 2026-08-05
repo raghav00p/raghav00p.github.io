@@ -37,10 +37,10 @@
         }
     </style>
 </head>
-
+<body x-data="game()" x-init="newGame(); initFullscreenSync();" :class="{dark: dark}" x-cloak>
     <x-component src="memory.html"></x-component>
     <button id="installBtn">Install App</button>
-    
+</body>
     <script src="app.js"></script>
 
 </html>
