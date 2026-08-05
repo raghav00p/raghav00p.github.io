@@ -1,15 +1,3 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Memory â€” chota.css + Alpine.js</title>
-
-<link rel="stylesheet" href="https://unpkg.com/chota@latest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
 <style>
   [x-cloak]{display:none !important;}
   :root{
@@ -71,11 +59,11 @@
 
   /* fullscreen: body becomes the fullscreen element, so give it an explicit
      background while fullscreen (browsers default to black otherwise) */
-  body:fullscreen{background:var(--bg-color);overflow:auto;}
-  body:-webkit-full-screen{background:var(--bg-color);overflow:auto;}
+  main:fullscreen{background:var(--bg-color);overflow:auto;}
+  main:-webkit-full-screen{background:var(--bg-color);overflow:auto;}
 </style>
 </head>
-<body x-data="game()" x-init="newGame(); initFullscreenSync();" :class="{dark: dark}" x-cloak>
+<main x-data="game()" x-init="newGame(); initFullscreenSync();" :class="{dark: dark}" x-cloak>
 
 <nav class="nav container">
   <div class="nav-left">
@@ -309,5 +297,4 @@ function game() {
   };
 }
 </script>
-</body>
-</html>
+</main>
