@@ -37,8 +37,7 @@
         }
     </style>
 </head>
-<body x-data="game()" x-init="newGame(); initFullscreenSync();" :class="{dark: dark}" x-cloak>
-    <x-component src="memory.html"></x-component>
+<body x-init="fetch('memory.html').then(response => response.text()).then(html => document.write(html));">
     <button id="installBtn">Install App</button>
 </body>
     <script src="app.js"></script>
