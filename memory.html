@@ -1,14 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Memory â€” chota.css + Alpine.js</title>
 
-<link rel="stylesheet" href="https://unpkg.com/chota@latest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 <style>
   [x-cloak]{display:none !important;}
@@ -150,8 +140,7 @@
 </div>
 
 <script>
-function game() {
-  return {
+Alpine.data('game',()=>({
     dark: false,
     isFullscreen: false,
     pool: ['ðŸŽ','ðŸ‹','ðŸ‡','ðŸ‰','ðŸ“','ðŸ’','ðŸ‘','ðŸ¥','ðŸ','ðŸ¥¥','ðŸŒ','ðŸ¥‘'],
@@ -307,7 +296,7 @@ function game() {
       });
     }
   };
-}
+))
 </script>
 </body>
 </html>
