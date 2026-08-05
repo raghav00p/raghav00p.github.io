@@ -37,7 +37,7 @@
         }
     </style>
 </head>
-<body x-init="fetch('memory.html').then(response => response.text()).then(html => document.write(html));">
+<body x-init="fetch('memory.html').then(response => response.text()).then(html => $el.innerHTML=html);">
     <button id="installBtn">Install App</button>
 </body>
     <script src="app.js"></script>
