@@ -7,7 +7,6 @@ const urlsToCache = [
   '/alpine.js',
   '/chota.css',
   '/run.js'
-  '/memory.html'
 ];
 
 // Install event
