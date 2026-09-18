@@ -1,0 +1,177 @@
+:root {
+  --bg: #19110f;
+  --colr: #c6bcbb;
+  --grey: #928886;
+  --dgrey: #302826;
+  --prim: green;
+  --mgrey: #38302e;
+  --lgrey: #817674;
+}
+.float {
+  float: right;
+}
+body {
+  background-color: var(--bg);
+  color: var(--colr);
+  line-height: 1.5;
+  margin: 0px;
+  font-size: 1.6rem;
+}
+* {
+  font-family: verdana, sans-serif;
+}
+.bottom {
+  padding-bottom: 3.2rem;
+}
+.big {
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 2rem;
+  color: var(--grey);
+  font-weight: bold;
+}
+.flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+nav.flex {
+  justify-content: space-around;
+  bottom: 0;
+  width: 100%;
+  position: fixed;
+  height: 3.2rem;
+  align-items: center;
+  background-color: var(--mgrey);
+}
+.full {
+  height: 100vh;
+  padding :  zero;
+}
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.bg {
+  background-color: red;
+}
+.small {
+  color: var(--grey);
+  font-size: 1rem;
+  font-weight: bold;
+}
+.container {
+  margin: 0rem 1.5rem 0rem 1.5rem;
+}
+input[type="date"],
+select { 
+  opacity: 0;
+  height: 0px;
+  width: 0px;
+}
+.card {
+  margin-bottom: 1rem;
+  border: 1px solid #333;
+  background-color: #15060a;
+  padding: 0.8rem;
+  border-radius: 15px;
+}
+button {
+  background-color: var(--dgrey);
+  color: var(--colr);
+  padding: 5px 10px;
+  font-size: 1.6rem;
+  border: none;
+  border-radius: 50px;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+}
+button:not(:disabled):active {
+  transform: scale(0.9);
+  box-shadow: none;
+}
+button:disabled {
+  opacity: 0.8;
+}
+textarea {
+  background-color: #000;
+  width: 100%;
+  border: none;
+  outline: none;
+  border-radius : 10px;
+  color: var(--colr)
+}
+/* The item currently held by the cursor */
+.sortable-drag {
+  opacity: 0;
+}
+
+circle {
+    transition: stroke-dashoffset 0.5s ease;
+  }
+
+progress {
+    width: 2rem;
+    height: 1rem;
+  }
+
+.tra {
+    transition: background-color 0.5s ease;
+  }
+  img {
+    /* Soft modern card */
+    box-shadow: 4px 5px 12px rgba(0, 0, 0, 0.25);
+    border: 8px solid white;
+    transform: rotate(-2deg);
+    max-width: 100%;
+  }
+
+.sc {
+    border-radius: 50%;
+    width: 27px;
+    height: 27px;
+  }
+  .bot {
+    border: 3px solid var(--bg);
+    border-radius: 50px;
+  }
+
+.menu {
+    position: absolute;
+    left: auto;
+    top: auto;
+    right: 0;
+    background-color: var(--color-grey);
+    padding: 5px;
+    border-radius: 10px;
+  }
+
+.menu {
+    position: absolute;
+    left: auto;
+    top: auto;
+    right: 0;
+    background-color: var(--color-grey);
+    padding: 5px;
+    border-radius: 10px;
+  }
+
+.menu {
+    position: absolute;
+    left: auto;
+    top: auto;
+    right: 0;
+    background-color: var(--color-grey);
+    padding: 5px;
+    border-radius: 10px;
+  }
+
+.menu {
+    position: absolute;
+    left: auto;
+    top: auto;
+    right: 0;
+    background-color: var(--color-grey);
+    padding: 5px;
+    border-radius: 10px;
+  }
