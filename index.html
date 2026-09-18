@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Home</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <!---link rel="stylesheet" href="//raghav00p.github.io/chota.css" /-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Master Mind" />
+    <meta name="theme-color" content="#2196F3" />
+
+    <title>Master Mind</title>
+
+    <!-- Link to manifest file -->
+    <link rel="manifest" href="manifest.json" />
+    <link
+      rel="icon"
+      sizes="192×192"
+      type="image/png"
+      href="icons/icon-192.png"
+    />
+    <link
+      rel="stylesheet"
+      href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+    />
+    <script src="//unpkg.com/dexie/dist/dexie.js"></script>
+    <script defer src="//raghav00p.github.io/sort.js"></script>
+    <script defer src="//raghav00p.github.io/alpine.js"></script>
+    <script defer src="//raghav00p.github.io/run.js"></script>
+    <script src="script.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body x-data="$store.run">
+    <svg style="display: none">
+      <symbol id="progressd" viewBox="0 0 120 120">
+        <circle
+          cx="60"
+          cy="60"
+          r="50"
+          stroke="var(--dgrey)"
+          stroke-width="10"
+          fill="none"
+        ></circle>
+
+        <circle
+          id="progress"
+          cx="60"
+          cy="60"
+          r="50"
+          stroke-width="10"
+          fill="none"
+          stroke-dasharray="314"
+          transform="rotate(-90 60 60)"
+          stroke-linecap="round"
+        ></circle>
+      </symbol>
+    </svg>
+
+    <!-- today.html-->
+    <div x-show="nav===1" x-cloak class="bottom container">
+      <div class="big" x-text="getFormat(tooler)"></div>
+      <div
+        class="flex"
+        x-data="{ array: [], no: 0 }"
+        x-effect="
+    array = [...ransom, ...habitika, ...taskito];
+    no = array.length
+      ? array.filter(i => i.status || i.checked).length / array.length * 100
+      : 0;
+    localStorage.setItem(tooler, JSON.stringify([no, array.length]))
+  "
+      >
+        <template x-for="day in days" :key="day">
+          <div
+            class=""
+            x-data="{ value: 0, total: 0 }"
+            @click="too(day)"
+            :style="{'background-color':tooler === day ? 'var(--dgrey)':'', 'padding':'5px','border-radius':'10px'}"
+            x-effect="
+        no;
+        const raw = localStorage.getItem(day);
+        const parsed = raw ? JSON.parse(raw) : [0, 0];
+        value = parsed[0];
+        total = parsed[1];
+      "
+            :style="{'color': day === tooler? 'var(--color-error)': ''}"
+            x-init="datte(day)"
+          >
+            <div x-text="day.slice(8)"></div>
+
+            <div x-show="value >= 100">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+
+            <div x-show="value < 100 && total > 0">
+              <svg
+                width="1em"
+                height="1em"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="3"
+                  y="15"
+                  width="20"
+                  height="8"
+                  rx="3"
+                  fill="black"
+                  stroke="currentColor"
+                  stroke-width="0"
+                />
+                <rect
+                  x="3"
+                  y="15"
+                  :width="value*20/100"
+                  height="8"
+                  rx="3"
+                  fill="currentColor"
+                />
+              </svg>
+              <!--progress :value="value" max="100"></progress-->
+            </div>
+          </div>
+        </template>
+      </div>
+      <div x-effect="ransom = ran.find(i=>i.date===tooler)?.content || []">
+        <!-- ransom -->
+        <div class="small">
+          <!--span @click="adran(tooler)">
+        <i class="fa-solid fa-plus"></i> quick task</span
+      --><button @click="adran(tooler)">+ quick</button>
+        </div>
+        <template x-for="task in ransom">
+          <div x-init="rone = $el.innerHTML">
+            <div>
+              <span class="float">
+                <i
+                  @click="rmran(tooler, task.id)"
+                  style="color: grey"
+                  class="fa-solid fa-xmark"
+                ></i
+              ></span>
+              <span @click="rcheck(tooler,task.id)">
+                <i class="fa-regular fa-square" x-show="!task.checked"></i>
+                <i class="fa-solid fa-square-check" x-show="task.checked"></i
+              ></span>
+              &nbsp;
+              <span
+                class=""
+                x-text="task.name"
+                :style="{'color': task.checked ? 'grey' : null}"
+              ></span>
+            </div>
+          </div>
+        </template>
+      </div>
+      <div>
+        <!-- taskito -->
+        <template x-for="task in taskito" :key="task.id"
+          ><div>
+            <span
+              @click="if(!task.subtask.length){$event.stopPropagation();tcheck(task.projectId, task.id)}"
+              :style="{'color':task.color}"
+            >
+              <i class="fa-solid fa-square-check" x-show="task.checked"> </i>
+              <i class="fa-regular fa-square" x-show="!task.checked"> </i>
+            </span>
+            &nbsp;
+            <span
+              class=""
+              :style="{'color': task.checked ? 'grey' : null }"
+              x-text="task.name"
+            ></span>
+          </div>
+        </template>
+      </div>
+      <div x-show="habitika.length" class="small">Habits</div>
+      <div>
+        <!-- habitika -->
+        <template x-for="habit in habitika" :key="habit.habitId">
+          <div class="">
+            <span
+              @click="hcheck(habit.habitId, habit.date)"
+              :style="{'color':habit.color}"
+            >
+              <i class="fa-solid fa-circle-check" x-show="habit.status"></i>
+              <i class="fa-regular fa-circle" x-show="!habit.status"></i>
+            </span>
+            &nbsp;
+            <span
+              class=""
+              :style="{'color': habit.status ? 'grey' : null }"
+              x-text="habit.name"
+            ></span>
+          </div>
+        </template>
+      </div>
+      <div x-data="toggle()">
+        <div class="center" @click="flip()">Upcoming</div>
+        <div x-show="show">
+          <button class="center small">
+            <label>
+              <input
+                type="date"
+                x-model="yoyo"
+                style="opacity: 0; width: 0px; height: 0px"
+                class="pull-left"
+                @change="datte(yoyo);adran(yoyo);scroll(yoyo)"
+              />
+              <div>+</div></label
+            >
+          </button>
+
+          <template
+            x-for="day in ran.filter(i => i.date > new Date().toISOString().slice(0,10))"
+            :key="day.date"
+          >
+            <div :id="day.date">
+              <div
+                x-text="getFormat(day.date) + ' +'"
+                class="small"
+                @click="adran(day.date)"
+              ></div>
+
+              <template x-for="task in day.content" :key="task.id">
+                <div class="">
+                  <span class="float"
+                    ><i
+                      @click="rmran(day.date, task.id)"
+                      style="color: grey"
+                      class="fa-solid fa-xmark"
+                    ></i
+                  ></span>
+
+                  <span @click="rcheck(day.date, task.id)">
+                    <i class="fa-regular fa-square" x-show="!task.checked"></i>
+
+                    <i
+                      class="fa-solid fa-square-check"
+                      x-show="task.checked"
+                    ></i>
+                  </span>
+
+                  <span
+                    class=""
+                    x-text="task.name"
+                    :style="{ color: task.checked ? 'grey' : null }"
+                  ></span>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom container" x-show="nav===5" x-transition>
+      <div class="float">
+        <i @click="nav=2" class="fa-solid fa-bullseye"></i>
+      </div>
+      <div class="big">Folder</div>
+      <div
+        x-sort.ghost="sortage($item, $position, 'color')"
+        x-sort:config="{delay:400,animation: 500}"
+      >
+        <template
+          x-for="color in sorting(colors.filter(i=>pro.filter(b=>b.color===i).length).map(id=>({id})),'color').map(obj=>obj.id)"
+          :key="color"
+        >
+          <div x-data="toggle()" x-sort:item="color">
+            <div @click="flip()">
+              <i
+                class="fa-solid fa-folder is-left"
+                :style="{'color':color}"
+              ></i>
+              &nbsp;
+              <span x-text="color"></span>
+            </div>
+            <div
+              x-show="show"
+              x-sort.ghost="sortage($item,$position,color)"
+              x-sort:config="{delay:400, animation:500}"
+            >
+              <template
+                x-for="project in sorting(pro.filter(i=>i.color===color),color)"
+                :key="project.id"
+              >
+                <div x-data="toggle()" x-sort:item="project.id">
+                  <div
+                    class="card"
+                    x-data="{hide:false}"
+                    @click="flip();hide=false"
+                  >
+                    <div class="float">
+                      <svg
+                        width="60"
+                        height="60"
+                        :stroke="project.color"
+                        :stroke-dashoffset="project.progress"
+                      >
+                        <use href="#progressd"></use>
+                      </svg>
+                    </div>
+
+                    <span x-text="project.name"></span>
+                    <span
+                      @click.stop="up(project.id,project.name)"
+                      class="small"
+                      x-show="show"
+                      >&nbsp;<i class="fa-solid fa-pen"></i
+                    ></span>
+                    <div class="small">
+                      <span x-text="Distance(project)+'d'"></span>&nbsp;
+                      <span>
+                        <i
+                          @click.stop="hide=!hide"
+                          class="fa-solid fa-ellipsis"
+                          x-show="show"
+                        ></i
+                      ></span>
+                    </div>
+                    <!-- editind staff -->
+                    <div x-show="hide" class="flex small">
+                      <template x-for="color in colors" :key="color"
+                        ><div>
+                          <i
+                            class="fa-solid fa-circle bot"
+                            @click.stop="colorz(project.id, color)"
+                            :style="{'color': color,'border-color': color === project.color ? 'white' : null}"
+                          ></i></div
+                      ></template>
+                    </div>
+                    <div x-show="hide" @click.stop="" class="small">
+                      <label class="flex">
+                        <div>start date:</div>
+                        <input
+                          type="date"
+                          :value="project.start"
+                          @change="setDate(project.id,'start', $event.target.value)"
+                        />
+                        <div x-text="getFormat(project.start)"></div>
+                      </label>
+                      <label class="flex">
+                        <div>end date:</div>
+                        <input
+                          type="date"
+                          :value="project.end"
+                          @change="setDate(project.id,'end', $event.target.value)"
+                        />
+                        <div x-text="getFormat(project.end)"></div>
+                      </label>
+                      <button
+                        class="button error col-12"
+                        :style="{'background-color': project.color}"
+                      >
+                        Move
+                      </button>
+                      <button
+                        class="button error outline col-12"
+                        @click="rm(project.id)"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    class="container"
+                    x-show="show"
+                    x-sort.ghost="tsort($item,$position,project.id)"
+                    x-cloak
+                    x-transition
+                    x-sort:config="{delay: 400,delayOnTouchOnly:true, animation: 400}"
+                  >
+                    <!-- tasks✅️ -->
+                    <template x-for="task in project.content" :key="task.id">
+                      <div
+                        x-effect="task.projectId = project.id; task.color = project.color"
+                        x-data="toggle()"
+                        @click="flip()"
+                        x-sort:item="task.id"
+                      >
+                        <!-- task + subtask+ add button-->
+                        <div>
+                          <div
+                            x-show="show"
+                            class="float"
+                            @click.stop="menu= menu === task.id ? null : task.id"
+                          >
+                            ⫶
+                          </div>
+
+                          <span
+                            @click="if (!task.subtask.length){ $event.stopPropagation(); tcheck(project.id, task.id); }"
+                            :style="{'color': project.color}"
+                          >
+                            <i
+                              class="fa-solid fa-square-check"
+                              x-show="task.checked"
+                              style=""
+                            >
+                            </i>
+                            <i
+                              class="fa-regular fa-square"
+                              style=""
+                              x-show="!task.checked"
+                            >
+                            </i>
+                          </span>
+                          &nbsp;
+                          <span
+                            :style="{'color': task.checked ? 'var(--grey)' : ''}"
+                            x-text="task.name"
+                          ></span>
+                        </div>
+                        <div
+                          x-show="menu === task.id"
+                          @click.outside="menu=null"
+                          @click.stop="menu = null"
+                          class="menu"
+                        >
+                          <div @click="tup(project.id, task.name, task.id)">
+                            Edit
+                          </div>
+                          <div @click="today(project.id, task.id)">Start</div>
+                          <div @click="tomorrow(project.id, task.id)"></div>
+                          <div class="shrink is-center">Move</div>
+                          <div @click="tre(project.id, task)">Delete</div>
+                        </div>
+
+                        <div class="container" x-show="show" x-transition>
+                          <div
+                            x-sort:config="{delay: 200,delayOnTouchOnly:true, animation: 400}"
+                            x-sort.ghost="ssort($item,$position,project.id,task.id)"
+                          >
+                            <!-- sub tasks📝 -->
+                            <template x-for="sub in task.subtask" :key="sub.id"
+                              ><div x-data="toggle()" x-sort:item="sub.id">
+                                <div
+                                  class="float small"
+                                  @click.stop="sre(project.id, task.id, sub.id)"
+                                >
+                                  <i class="fa-solid fa-minus"></i>
+                                </div>
+                                <span
+                                  @click.stop="scheck(project.id,task.id,sub.id)"
+                                  :style="{'color': project.color}"
+                                >
+                                  <i
+                                    class="fa-solid fa-circle-check"
+                                    x-show="sub.checked"
+                                  ></i
+                                  ><i
+                                    class="fa-regular fa-circle"
+                                    x-show="!sub.checked"
+                                  ></i
+                                ></span>
+                                &nbsp;
+                                <span
+                                  :style="{'color': sub.checked ? 'grey': 'white'}"
+                                  x-text="sub.name"
+                                ></span>
+                              </div>
+                            </template>
+                            <div
+                              @click.stop="sad(project.id,task.id)"
+                              class="small"
+                            >
+                              <button class="small">+ subtask</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                    <div>
+                      <button class="button primary" @click="tad(project.id)">
+                        + task
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+      <hr />
+      <div
+        x-sort.ghost="sortage($item,$position,'uncategorized')"
+        x-sort:config="{delay:400, animation:500}"
+      >
+        <template
+          x-for="project in sorting(pro.filter(i=>i.color==='white'),'uncategorized')"
+          :key="project.id"
+        >
+          <div x-data="toggle()" x-sort:item="project.id">
+            <div class="card" x-data="{hide:false}" @click="flip();hide=false">
+              <div class="float">
+                <svg
+                  width="60"
+                  height="60"
+                  :stroke="project.color"
+                  :stroke-dashoffset="project.progress"
+                >
+                  <use href="#progressd"></use>
+                </svg>
+              </div>
+
+              <span x-text="project.name"></span>
+              <span
+                @click.stop="up(project.id,project.name)"
+                class="small"
+                x-show="show"
+                >&nbsp;<i class="fa-solid fa-pen"></i
+              ></span>
+              <div class="small">
+                <span x-text="Distance(project)+'d'"></span>&nbsp;
+                <span>
+                  <i
+                    @click.stop="hide=!hide"
+                    class="fa-solid fa-ellipsis"
+                    x-show="show"
+                  ></i
+                ></span>
+              </div>
+              <!-- editind staff -->
+              <div x-show="hide" class="flex small">
+                <template x-for="color in colors" :key="color"
+                  ><div>
+                    <i
+                      class="fa-solid fa-circle bot"
+                      @click.stop="colorz(project.id, color)"
+                      :style="{'color': color,'border-color': color === project.color ? 'white' : null}"
+                    ></i></div
+                ></template>
+              </div>
+              <div x-show="hide" @click.stop="" class="small">
+                <label class="flex">
+                  <div>start date:</div>
+                  <input
+                    type="date"
+                    :value="project.start"
+                    @change="setDate(project.id,'start', $event.target.value)"
+                  />
+                  <div x-text="getFormat(project.start)"></div>
+                </label>
+                <label class="flex">
+                  <div>end date:</div>
+                  <input
+                    type="date"
+                    :value="project.end"
+                    @change="setDate(project.id,'end', $event.target.value)"
+                  />
+                  <div x-text="getFormat(project.end)"></div>
+                </label>
+                <button
+                  class="button error col-12"
+                  :style="{'background-color': project.color}"
+                >
+                  Move
+                </button>
+                <button
+                  class="button error outline col-12"
+                  @click="rm(project.id)"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+            <div
+              class="container"
+              x-show="show"
+              x-sort.ghost="tsort($item,$position,project.id)"
+              x-cloak
+              x-transition
+              x-sort:config="{delay: 400,delayOnTouchOnly:true, animation: 400}"
+            >
+              <!-- tasks✅️ -->
+              <template x-for="task in project.content" :key="task.id">
+                <div
+                  x-effect="task.projectId = project.id; task.color = project.color"
+                  x-data="toggle()"
+                  @click="flip()"
+                  x-sort:item="task.id"
+                >
+                  <!-- task + subtask+ add button-->
+                  <div>
+                    <div
+                      x-show="show"
+                      class="float"
+                      @click.stop="menu= menu === task.id ? null : task.id"
+                    >
+                      ⫶
+                    </div>
+
+                    <span
+                      @click="if (!task.subtask.length){ $event.stopPropagation(); tcheck(project.id, task.id); }"
+                      :style="{'color': project.color}"
+                    >
+                      <i
+                        class="fa-solid fa-square-check"
+                        x-show="task.checked"
+                        style=""
+                      >
+                      </i>
+                      <i
+                        class="fa-regular fa-square"
+                        style=""
+                        x-show="!task.checked"
+                      >
+                      </i>
+                    </span>
+                    &nbsp;
+                    <span
+                      :style="{'color': task.checked ? 'var(--grey)' : ''}"
+                      x-text="task.name"
+                    ></span>
+                  </div>
+                  <div
+                    x-show="menu === task.id"
+                    @click.outside="menu=null"
+                    @click.stop="menu = null"
+                    class="menu"
+                  >
+                    <div @click="tup(project.id, task.name, task.id)">Edit</div>
+                    <div @click="today(project.id, task.id)">Start</div>
+                    <div @click="tomorrow(project.id, task.id)"></div>
+                    <div class="shrink is-center">Move</div>
+                    <div @click="tre(project.id, task)">Delete</div>
+                  </div>
+
+                  <div class="container" x-show="show" x-transition>
+                    <div
+                      x-sort:config="{delay: 200,delayOnTouchOnly:true, animation: 400}"
+                      x-sort.ghost="ssort($item,$position,project.id,task.id)"
+                    >
+                      <!-- sub tasks📝 -->
+                      <template x-for="sub in task.subtask" :key="sub.id"
+                        ><div x-data="toggle()" x-sort:item="sub.id">
+                          <div
+                            class="float small"
+                            @click.stop="sre(project.id, task.id, sub.id)"
+                          >
+                            <i class="fa-solid fa-minus"></i>
+                          </div>
+                          <span
+                            @click.stop="scheck(project.id,task.id,sub.id)"
+                            :style="{'color': project.color}"
+                          >
+                            <i
+                              class="fa-solid fa-circle-check"
+                              x-show="sub.checked"
+                            ></i
+                            ><i
+                              class="fa-regular fa-circle"
+                              x-show="!sub.checked"
+                            ></i
+                          ></span>
+                          &nbsp;
+                          <span
+                            :style="{'color': sub.checked ? 'grey': 'white'}"
+                            x-text="sub.name"
+                          ></span>
+                        </div>
+                      </template>
+                      <div @click.stop="sad(project.id,task.id)" class="small">
+                        <button class="small">+ subtask</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <div>
+                <button class="button primary" @click="tad(project.id)">
+                  + task
+                </button>
+              </div>
+            </div>
+          </div></template
+        >
+      </div>
+    </div>
+
+    <div
+      x-show="nav===2"
+      x-cloak
+      class="bottom container"
+      x-effect="
+  taskito = pro.flatMap(p => p.content).filter(t => t.date === tooler)
+"
+    >
+      <div class="float" @click="nav=5">
+        <i class="fa-solid fa-folder"></i>
+      </div>
+      <div class="big">Project</div>
+      <div
+        x-sort.ghost="sortage($item,$position, 'project')"
+        x-sort:config="{delay:400, animation: 600}"
+      >
+        <template
+          x-for="project in sorting([...pro].filter(i=>(new Date().toISOString().slice(0,10)>=i.start)),'project')"
+          :key="project.id"
+        >
+          <div x-data="toggle()" x-sort:item="project.id">
+            <div class="card" x-data="{hide:false}" @click="flip();hide=false">
+              <div class="float">
+                <svg
+                  width="60"
+                  height="60"
+                  :stroke="project.color"
+                  :stroke-dashoffset="project.progress"
+                >
+                  <use href="#progressd"></use>
+                </svg>
+              </div>
+
+              <span x-text="project.name"></span>
+              <span
+                @click.stop="up(project.id,project.name)"
+                class="small"
+                x-show="show"
+                >&nbsp;<i class="fa-solid fa-pen"></i
+              ></span>
+              <div class="small">
+                <span x-text="Distance(project)+'d'"></span>&nbsp;
+                <span>
+                  <i
+                    @click.stop="hide=!hide"
+                    class="fa-solid fa-ellipsis"
+                    x-show="show"
+                  ></i
+                ></span>
+              </div>
+              <!-- editind staff -->
+              <div x-show="hide" class="flex small">
+                <template x-for="color in colors" :key="color"
+                  ><div>
+                    <i
+                      class="fa-solid fa-circle bot"
+                      @click.stop="colorz(project.id, color)"
+                      :style="{'color': color,'border-color': color === project.color ? 'white' : null}"
+                    ></i></div
+                ></template>
+              </div>
+              <div x-show="hide" @click.stop="" class="small">
+                <label class="flex">
+                  <div>start date:</div>
+                  <input
+                    type="date"
+                    :value="project.start"
+                    @change="setDate(project.id,'start', $event.target.value)"
+                  />
+                  <div x-text="getFormat(project.start)"></div>
+                </label>
+                <label class="flex">
+                  <div>end date:</div>
+                  <input
+                    type="date"
+                    :value="project.end"
+                    @change="setDate(project.id,'end', $event.target.value)"
+                  />
+                  <div x-text="getFormat(project.end)"></div>
+                </label>
+                <button
+                  class="button error col-12"
+                  :style="{'background-color': project.color}"
+                >
+                  Move
+                </button>
+                <button
+                  class="button error outline col-12"
+                  @click="rm(project.id)"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+            <div
+              class="container"
+              x-show="show"
+              x-sort.ghost="tsort($item,$position,project.id)"
+              x-cloak
+              x-transition
+              x-sort:config="{delay: 400,delayOnTouchOnly:true, animation: 400}"
+            >
+              <!-- tasks✅️ -->
+              <template x-for="task in project.content" :key="task.id">
+                <div
+                  x-effect="task.projectId = project.id; task.color = project.color"
+                  x-data="toggle()"
+                  @click="flip()"
+                  x-sort:item="task.id"
+                >
+                  <!-- task + subtask+ add button-->
+                  <div>
+                    <div
+                      x-show="show"
+                      class="float"
+                      @click.stop="menu= menu === task.id ? null : task.id"
+                    >
+                      ⫶
+                    </div>
+
+                    <span
+                      @click="if (!task.subtask.length){ $event.stopPropagation(); tcheck(project.id, task.id); }"
+                      :style="{'color': project.color}"
+                    >
+                      <i
+                        class="fa-solid fa-square-check"
+                        x-show="task.checked"
+                        style=""
+                      >
+                      </i>
+                      <i
+                        class="fa-regular fa-square"
+                        style=""
+                        x-show="!task.checked"
+                      >
+                      </i>
+                    </span>
+                    &nbsp;
+                    <span
+                      :style="{'color': task.checked ? 'var(--grey)' : ''}"
+                      x-text="task.name"
+                    ></span>
+                  </div>
+                  <div
+                    x-show="menu === task.id"
+                    @click.outside="menu=null"
+                    @click.stop="menu = null"
+                    class="menu"
+                  >
+                    <div @click="tup(project.id, task.name, task.id)">Edit</div>
+                    <div @click="today(project.id, task.id)">Start</div>
+                    <div @click="tomorrow(project.id, task.id)"></div>
+                    <div class="shrink is-center">Move</div>
+                    <div @click="tre(project.id, task)">Delete</div>
+                  </div>
+
+                  <div class="container" x-show="show" x-transition>
+                    <div
+                      x-sort:config="{delay: 200,delayOnTouchOnly:true, animation: 400}"
+                      x-sort.ghost="ssort($item,$position,project.id,task.id)"
+                    >
+                      <!-- sub tasks📝 -->
+                      <template x-for="sub in task.subtask" :key="sub.id"
+                        ><div x-data="toggle()" x-sort:item="sub.id">
+                          <div
+                            class="float small"
+                            @click.stop="sre(project.id, task.id, sub.id)"
+                          >
+                            <i class="fa-solid fa-minus"></i>
+                          </div>
+                          <span
+                            @click.stop="scheck(project.id,task.id,sub.id)"
+                            :style="{'color': project.color}"
+                          >
+                            <i
+                              class="fa-solid fa-circle-check"
+                              x-show="sub.checked"
+                            ></i
+                            ><i
+                              class="fa-regular fa-circle"
+                              x-show="!sub.checked"
+                            ></i
+                          ></span>
+                          &nbsp;
+                          <span
+                            :style="{'color': sub.checked ? 'grey': 'white'}"
+                            x-text="sub.name"
+                          ></span>
+                        </div>
+                      </template>
+                      <div @click.stop="sad(project.id,task.id)" class="small">
+                        <button class="small">+ subtask</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <div>
+                <button class="button primary" @click="tad(project.id)">
+                  + task
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div class="" style="margin-top: 10px" x-data="toggle()">
+        <button @click="add()">+ Add</button>
+        <button
+          @click="flip()"
+          x-text="'Upcoming(' + [...pro].filter(i=>(i.start>new Date().toISOString().slice(0,10))).length+ ')'"
+        ></button>
+        <div x-show="show">
+          <template
+            x-for="project in [...pro].filter(i=>(i.start>new Date().toISOString().slice(0,10)))"
+            :key="project.id"
+          >
+            <div x-data="toggle()" x-sort:item="project.id">
+              <div
+                class="card"
+                x-data="{hide:false}"
+                @click="flip();hide=false"
+              >
+                <div class="float">
+                  <svg
+                    width="60"
+                    height="60"
+                    :stroke="project.color"
+                    :stroke-dashoffset="project.progress"
+                  >
+                    <use href="#progressd"></use>
+                  </svg>
+                </div>
+
+                <span x-text="project.name"></span>
+                <span
+                  @click.stop="up(project.id,project.name)"
+                  class="small"
+                  x-show="show"
+                  >&nbsp;<i class="fa-solid fa-pen"></i
+                ></span>
+                <div class="small">
+                  <span x-text="Distance(project)+'d'"></span>&nbsp;
+                  <span>
+                    <i
+                      @click.stop="hide=!hide"
+                      class="fa-solid fa-ellipsis"
+                      x-show="show"
+                    ></i
+                  ></span>
+                </div>
+                <!-- editind staff -->
+                <div x-show="hide" class="flex small">
+                  <template x-for="color in colors" :key="color"
+                    ><div>
+                      <i
+                        class="fa-solid fa-circle bot"
+                        @click.stop="colorz(project.id, color)"
+                        :style="{'color': color,'border-color': color === project.color ? 'white' : null}"
+                      ></i></div
+                  ></template>
+                </div>
+                <div x-show="hide" @click.stop="" class="small">
+                  <label class="flex">
+                    <div>start date:</div>
+                    <input
+                      type="date"
+                      :value="project.start"
+                      @change="setDate(project.id,'start', $event.target.value)"
+                    />
+                    <div x-text="getFormat(project.start)"></div>
+                  </label>
+                  <label class="flex">
+                    <div>end date:</div>
+                    <input
+                      type="date"
+                      :value="project.end"
+                      @change="setDate(project.id,'end', $event.target.value)"
+                    />
+                    <div x-text="getFormat(project.end)"></div>
+                  </label>
+                  <button
+                    class="button error col-12"
+                    :style="{'background-color': project.color}"
+                  >
+                    Move
+                  </button>
+                  <button
+                    class="button error outline col-12"
+                    @click="rm(project.id)"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+              <div
+                class="container"
+                x-show="show"
+                x-sort.ghost="tsort($item,$position,project.id)"
+                x-cloak
+                x-transition
+                x-sort:config="{delay: 400,delayOnTouchOnly:true, animation: 400}"
+              >
+                <!-- tasks✅️ -->
+                <template x-for="task in project.content" :key="task.id">
+                  <div
+                    x-effect="task.projectId = project.id; task.color = project.color"
+                    x-data="toggle()"
+                    @click="flip()"
+                    x-sort:item="task.id"
+                  >
+                    <!-- task + subtask+ add button-->
+                    <div>
+                      <div
+                        x-show="show"
+                        class="float"
+                        @click.stop="menu= menu === task.id ? null : task.id"
+                      >
+                        ⫶
+                      </div>
+
+                      <span
+                        @click="if (!task.subtask.length){ $event.stopPropagation(); tcheck(project.id, task.id); }"
+                        :style="{'color': project.color}"
+                      >
+                        <i
+                          class="fa-solid fa-square-check"
+                          x-show="task.checked"
+                          style=""
+                        >
+                        </i>
+                        <i
+                          class="fa-regular fa-square"
+                          style=""
+                          x-show="!task.checked"
+                        >
+                        </i>
+                      </span>
+                      &nbsp;
+                      <span
+                        :style="{'color': task.checked ? 'var(--grey)' : ''}"
+                        x-text="task.name"
+                      ></span>
+                    </div>
+                    <div
+                      x-show="menu === task.id"
+                      @click.outside="menu=null"
+                      @click.stop="menu = null"
+                      class="menu"
+                    >
+                      <div @click="tup(project.id, task.name, task.id)">
+                        Edit
+                      </div>
+                      <div @click="today(project.id, task.id)">Start</div>
+                      <div @click="tomorrow(project.id, task.id)"></div>
+                      <div class="shrink is-center">Move</div>
+                      <div @click="tre(project.id, task)">Delete</div>
+                    </div>
+
+                    <div class="container" x-show="show" x-transition>
+                      <div
+                        x-sort:config="{delay: 200,delayOnTouchOnly:true, animation: 400}"
+                        x-sort.ghost="ssort($item,$position,project.id,task.id)"
+                      >
+                        <!-- sub tasks📝 -->
+                        <template x-for="sub in task.subtask" :key="sub.id"
+                          ><div x-data="toggle()" x-sort:item="sub.id">
+                            <div
+                              class="float small"
+                              @click.stop="sre(project.id, task.id, sub.id)"
+                            >
+                              <i class="fa-solid fa-minus"></i>
+                            </div>
+                            <span
+                              @click.stop="scheck(project.id,task.id,sub.id)"
+                              :style="{'color': project.color}"
+                            >
+                              <i
+                                class="fa-solid fa-circle-check"
+                                x-show="sub.checked"
+                              ></i
+                              ><i
+                                class="fa-regular fa-circle"
+                                x-show="!sub.checked"
+                              ></i
+                            ></span>
+                            &nbsp;
+                            <span
+                              :style="{'color': sub.checked ? 'grey': 'white'}"
+                              x-text="sub.name"
+                            ></span>
+                          </div>
+                        </template>
+                        <div
+                          @click.stop="sad(project.id,task.id)"
+                          class="small"
+                        >
+                          <button class="small">+ subtask</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                <div>
+                  <button class="button primary" @click="tad(project.id)">
+                    + task
+                  </button>
+                </div>
+              </div>
+            </div></template
+          >
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="bottom container"
+      x-show="nav===3"
+      x-cloak
+      x-effect="hab.forEach(i=>habitinit(i.id));
+habitika = hab.flatMap(p => p.array.map(t=>({...t,habitId:p.id, name: p.name, color: p.color}))).filter(t => t.date === tooler)
+"
+    >
+      <div class="big">Habits</div>
+      <div
+        x-sort.ghost="sortage($item,$position,'habit')"
+        x-sort:config="{delay: 400, animation: 500}"
+      >
+        <template x-for="habit in sorting(hab,'habit')">
+          <div class="card" x-data="toggle()" x-sort:item="habit.id">
+            <div x-data="{sett:false,hide:false}" @click="flip();hide=false">
+              <div class="float" :style="{'color': habit.color}">
+                <b x-text="habit.status ? habit.streak : habit.total"></b>
+              </div>
+              <div x-text="habit.name"></div>
+              <div>
+                <div class="flex float small" x-show="habit.status">
+                  <template x-for="day in days" :key="day"
+                    ><div
+                      style="margin: 0px 2px"
+                      x-data="{hast:0}"
+                      x-effect="hast = getStatus(day,habit.array)"
+                    >
+                      <i
+                        x-show="hast === 1"
+                        class="fa-solid fa-circle-check"
+                        :style="{'color': habit.color}"
+                      ></i>
+                      <i
+                        x-show="hast === 2"
+                        class="fa-solid fa-circle-xmark"
+                      ></i>
+                      <i class="fa-solid fa-minus" x-show="hast === 3"></i>
+                    </div>
+                  </template>
+                </div>
+                <span
+                  class="small"
+                  x-show="habit.status"
+                  x-text="habit.total+' days'"
+                ></span>
+                &nbsp;<span @click.stop="hide=!hide" x-show="show">
+                  <i class="fa-solid fa-ellipsis"></i>
+                </span>
+                <!-- hidden -->
+                <div x-show="hide">
+                  <div x-show="show">
+                    <div class="flex small">
+                      <template x-for="color in colors" :key="color"
+                        ><div>
+                          <i
+                            class="fa-solid fa-circle bot"
+                            @click.stop="colord(habit.id, color);habitinit(habit.id)"
+                            :style="{'color': color,'border-color': color === habit.color ? 'white' : null}"
+                          ></i></div
+                      ></template>
+                    </div>
+                  </div>
+                  <div
+                    x-show="show"
+                    class="flex"
+                    x-data="{loc:['Mon','Tue','Wed','Thu', 'Fri', 'Sat', 'Sun']}"
+                  >
+                    <template x-for="name in loc" :key="name">
+                      <div
+                        :style="{'color':habit.schedule.some((i)=>i===name) ? habit.color: 'var(--color-grey)' }"
+                        @click.stop="push(name, habit, habit.id)"
+                        x-text="name.slice(0,1)"
+                      ></div
+                    ></template>
+                  </div>
+                  <div class="flex" x-show="show">
+                    <button
+                      x-effect="$el.innerText = habit.status ? 'pause':'resume'"
+                      @click.stop="pause(habit.id)"
+                    ></button>
+                    <button @click="hre(habit.id)">delete</button>
+                  </div>
+                </div>
+              </div>
+              <div x-transition x-show="show">
+                <div class="flex small">
+                  <div>
+                    <i
+                      class="fa-solid fa-trophy"
+                      style="color: var(--color-grey)"
+                    ></i>
+                    <span x-text="habit.highest"></span>
+                  </div>
+
+                  <div>
+                    <i
+                      class="fa-solid fa-bullseye"
+                      style="color: var(--color-grey)"
+                    >
+                    </i>
+                    <span x-text="habit.percentage + '%'"></span>
+                  </div>
+
+                  <div>
+                    <i
+                      class="fa-solid fa-snowflake"
+                      style="color: var(--color-grey)"
+                    ></i>
+                    <span x-text="habit.freezer.length + '/3'"></span>
+                  </div>
+                  <div class="center" x-text="'Since '+habit.startedon"></div>
+                </div>
+
+                <textarea
+                  @click.stop=""
+                  :style="{outline:'habit.color'}"
+                  contenteditable="true"
+                  x-text="habit.description"
+                  @input="note(habit.id,$el.value)"
+                  placeholder="Describe..."
+                ></textarea>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+      <div class="container">
+        <button class="" @click="had()">Add habit</button>
+      </div>
+    </div>
+
+    <nav class="flex">
+      <div @click="nav=1">
+        <i
+          class="fa-solid fa-square-check"
+          :style="{color: nav===1 ? '#eca201':'var(--colr)'}"
+        ></i>
+      </div>
+      <div @click="nav=2">
+        <i
+          class="fa-solid fa-bars-progress"
+          :style="{color: nav===2 ? '#eca201':'var(--colr)'}"
+        ></i>
+      </div>
+      <div @click="nav=3">
+        <i
+          class="fa-solid fa-fire"
+          :style="{color: nav===3 ? '#eca201':'var(--colr)'}"
+        ></i>
+      </div>
+      <div @click="nav=4" :style="{color: nav===4 ? '#eca201':'var(--colr)'}">
+        <i class="fa-solid fa-face-frown" x-show="jojo===0"></i>
+        <i class="fa-solid fa-face-meh" x-show="jojo===1"></i>
+        <i class="fa-solid fa-face-smile" x-show="jojo===2"></i>
+      </div>
+    </nav>
+
+    <div
+      x-show="nav===4"
+      x-cloak
+      x-data="journal()"
+      class="full tra"
+      :style="{'--dbg':index === 2 ?'#304C3D': index === 1 ? '#754C18':'#2E4152', padding: '16px', 'background-color': 'var(--dbg)'}"
+    >
+      <div class="flex">
+        <div>
+          <span
+            @dblclick="if(selectedDay===today){mood()}"
+            x-effect="jojo=index"
+          >
+            <i class="fa-solid fa-face-frown" x-show="index===0"></i>
+            <i class="fa-solid fa-face-meh" x-show="index===1"></i>
+            <i class="fa-solid fa-face-smile" x-show="index===2"></i
+          ></span>
+        </div>
+        <div x-show="selectedDay!==today">
+          <i class="fa-solid fa-lock"></i>
+        </div>
+        <div
+          x-data="toggle()"
+          @click="flip()"
+          @click.outside="show=false"
+          class="small"
+        >
+          <div
+            x-text="getFormat(selectedDay)"
+            x-effect="solution  = days.filter(i=> i.id !== selectedDay)"
+          ></div>
+          <div
+            x-show="show"
+            style="
+              position: absolute;
+              padding: 5px;
+              border-radius: 10px;
+              z-index: 1;
+            "
+            :style="{'background-color': show ? 'var(--dgrey)':''}"
+          >
+            <template x-for="day in solution.reverse()" :key="day.id">
+              <div
+                x-text="getFormat(day.id)"
+                @click="load(days.find(d=>d.id === day.id)); selectedDay = day.id "
+              ></div>
+            </template>
+          </div>
+        </div>
+      </div>
+      <textarea
+        @click="$el.focus()"
+        :disabled="selectedDay !== today"
+        style="background: transparent; font-size: 24px; field-sizing: content"
+        x-effect="$el.value = content"
+        :placeholder="selectedDay===today ? 'Describe...': 'Nothing on this day...'"
+        @input="save($el.value)"
+      ></textarea>
+      <div x-show="imageUrl || (selectedDay === today)">
+        <label>
+          <input
+            type="file"
+            x-show="false"
+            :disabled="selectedDay !== today"
+            @change="dave($event.target.files[0])"
+          />
+          <img :src="imageUrl" alt="Take a Photo 📸" />
+        </label>
+      </div>
+    </div>
+  </body>
+  <script src="app.js"></script>
+</html>
