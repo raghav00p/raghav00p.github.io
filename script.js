@@ -7,6 +7,7 @@ db.version(1).stores({
   journal: 'id, content, index, image',
   system: 'sort, rename',
 }); //karta dharta
+db.cloud.configure({databaseUrl: "https://zhvnsd946.dexie.cloud", requireAuth: true, unsyncedTables:["journal"]});
 
 function toggle() {
   // hide element
