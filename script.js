@@ -1,8 +1,8 @@
-const db = new Dexie('Hoppers');
+const db = new Dexie('Hoppers' , {  addons: [DexieCloud.dexieCloud]});
 db.version(1).stores({
-  todos: '++id, name, start, end, content, color', //coma error
+  todos: '&id, name, start, end, content, color', //coma error
   habits:
-    '++id, name, startedon, description,  streak, highest, total, freezer, color, schedule,  status, array',
+    '&id, name, startedon, description,  streak, highest, total, freezer, color, schedule,  status, array',
   daily: '&date, content',
   journal: 'id, content, index, image',
   system: 'sort, rename',
@@ -62,6 +62,7 @@ document.addEventListener('alpine:init', () => {
         const start = date.toISOString().slice(0, 10);
         date.setDate(date.getDate() + 7);
         await db.todos.add({
+          id: crypto.randomUUID(),
           name: take,
           content: [],
           checked: false,
@@ -543,6 +544,7 @@ document.addEventListener("alpine:init", () => {
       const take = prompt();
       if (take && take.trim()) {
         await db.habits.add({
+          id: crypto.randomUUID(),
           name: take,
           startedon: new Date().toLocaleDateString('us'),
           description: null,
