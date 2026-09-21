@@ -19,19 +19,492 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     
     <style>
-        button {
-            padding: 10px 20px;
-            background: #2196F3;
-            color: white;
-            border: none;
-            border-radius: 4px;
+        :root {
+            --bg: #081120;
+            --bg-soft: #0f1c2f;
+            --card: rgba(17, 28, 44, 0.8);
+            --card-strong: #101c2d;
+            --primary: #56ccf2;
+            --primary-2: #4a90ff;
+            --accent: #8ef0c3;
+            --text: #edf6ff;
+            --muted: #9db3c8;
+            --line: rgba(255,255,255,0.08);
+            --shadow: 0 30px 60px rgba(11, 17, 31, 0.45);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(86, 204, 242, 0.18), transparent 25%),
+                radial-gradient(circle at bottom right, rgba(74, 144, 255, 0.20), transparent 30%),
+                linear-gradient(135deg, var(--bg) 0%, #0d1a2d 45%, #0b1424 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .page-shell {
+            width: min(1200px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 32px 0 80px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 0 22px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .brand-mark {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            box-shadow: var(--shadow);
+            color: #061120;
+            font-size: 1.2rem;
+            font-weight: 900;
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .nav a {
+            color: var(--muted);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .nav a:hover {
+            color: var(--text);
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            align-items: center;
+            gap: 48px;
+            padding: 54px 0 24px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(17, 28, 44, 0.65);
+            color: var(--accent);
+            font-size: 0.75rem;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 12px rgba(142, 240, 195, 0.85);
+        }
+
+        h1 {
+            margin: 24px 0 18px;
+            font-size: clamp(2.8rem, 5vw, 5rem);
+            line-height: 0.94;
+            letter-spacing: -0.06em;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), #c7f3ff 40%, var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .lead {
+            max-width: 620px;
+            color: var(--muted);
+            font-size: 1.1rem;
+            line-height: 1.7;
+            margin-bottom: 28px;
+        }
+
+        .cta-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .btn {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            height: 52px;
+            padding: 0 22px;
+            border-radius: 14px;
+            border: 1px solid transparent;
+            text-decoration: none;
+            font-weight: 700;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
             cursor: pointer;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            color: #07111d;
+            box-shadow: 0 18px 30px rgba(86, 204, 242, 0.35);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.02);
+            color: var(--text);
+            border-color: var(--line);
+        }
+
+        .mini-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+        }
+
+        .stat {
+            min-width: 130px;
+            padding: 14px 16px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.02);
+            backdrop-filter: blur(12px);
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        .stat span {
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .showcase {
+            position: relative;
+            padding: 28px;
+            border-radius: 28px;
+            background: linear-gradient(180deg, rgba(21, 35, 53, 0.9), rgba(10, 18, 29, 0.95));
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .showcase::before {
+            content: "";
+            position: absolute;
+            inset: auto -60px -60px auto;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(74, 144, 255, 0.35), transparent 60%);
+            pointer-events: none;
+        }
+
+        .window-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+        }
+
+        .dot.red { background: #ff6b7a; }
+        .dot.yellow { background: #fdbc4b; }
+        .dot.green { background: #4ade80; }
+
+        .mockup {
+            position: relative;
+            z-index: 1;
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(7, 17, 29, 0.8);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .mockup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .progress-block {
+            display: grid;
+            gap: 16px;
+        }
+
+        .lesson {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 16px 14px;
+        }
+
+        .lesson-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .lesson-meta {
+            color: var(--muted);
+            font-size: 0.82rem;
+        }
+
+        .pill {
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(86, 204, 242, 0.12);
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 0.72rem;
+        }
+
+        .progress-bar {
+            position: relative;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+            margin-top: 14px;
+        }
+
+        .progress-bar > span {
+            position: absolute;
+            inset: 0 auto 0 0;
+            border-radius: inherit;
+            width: 72%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 22px;
+            margin-top: 44px;
+        }
+
+        .feature-card {
+            padding: 24px 22px;
+            border-radius: 20px;
+            background: rgba(16, 25, 39, 0.8);
+            border: 1px solid var(--line);
+            box-shadow: 0 18px 32px rgba(5, 10, 20, 0.22);
+        }
+
+        .feature-icon {
+            width: 46px;
+            height: 46px;
+            display: grid;
+            place-items: center;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(86, 204, 242, 0.2), rgba(74, 144, 255, 0.12));
+            font-size: 1.4rem;
+            margin-bottom: 18px;
+        }
+
+        .feature-card h3 {
+            margin: 0 0 10px;
+            font-size: 1.2rem;
+        }
+
+        .feature-card p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        @media (max-width: 900px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .nav {
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .cta-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <button id="installBtn container">Install App</button>
-</body>
-    <script src="app.js"></script>
+    <div class="page-shell">
+        <header class="topbar">
+            <a href="#" class="brand" aria-label="Master Mind home">
+                <span class="brand-mark">M</span>
+                <span>Master Mind</span>
+            </a>
 
+            <nav class="nav">
+                <a href="#features">Features</a>
+                <a href="#learning">Learning</a>
+                <a href="#about">About</a>
+            </nav>
+        </header>
+
+        <main class="hero">
+            <section>
+                <div class="eyebrow">Smart learning experience</div>
+                <h1>
+                    Turn ideas into <span class="gradient-text">confidence</span>
+                </h1>
+                <p class="lead">
+                    Master Mind helps you build skills faster with focused lessons, quick practice sessions,
+                    and a guided path designed to keep momentum high from day one.
+                </p>
+
+                <div class="cta-row">
+                    <a href="#features" class="btn btn-primary">Get started</a>
+                    <button id="installBtn" class="btn btn-secondary" type="button">Install App</button>
+                </div>
+
+                <div class="mini-stats" aria-label="platform stats">
+                    <div class="stat">
+                        <strong>14k+</strong>
+                        <span>active learners</span>
+                    </div>
+                    <div class="stat">
+                        <strong>92%</strong>
+                        <span>goal completion</span>
+                    </div>
+                    <div class="stat">
+                        <strong>3x</strong>
+                        <span>faster progress</span>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="showcase" aria-label="Product preview">
+                <div class="window-bar">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                </div>
+
+                <div class="mockup">
+                    <div class="mockup-header">
+                        <span>Today’s focus</span>
+                        <span>7 min</span>
+                    </div>
+
+                    <div class="progress-block">
+                        <div class="lesson">
+                            <div>
+                                <div class="lesson-title">AI Foundations</div>
+                                <div class="lesson-meta">Module 04 • concept review</div>
+                            </div>
+                            <span class="pill">On Track</span>
+                        </div>
+
+                        <div class="progress-bar" aria-label="Progress indicator"><span></span></div>
+
+                        <div class="lesson">
+                            <div>
+                                <div class="lesson-title">Daily challenge</div>
+                                <div class="lesson-meta">3 questions left</div>
+                            </div>
+                            <span class="pill">Ready</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <section id="features" class="feature-grid" aria-label="Key features">
+            <article class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Focused lessons</h3>
+                <p>Short, high-impact learning blocks that make it easy to stay consistent and build real understanding.</p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Track progress</h3>
+                <p>See momentum with weekly streaks, completion insights, and personalized feedback that keeps you motivated.</p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-icon">🧠</div>
+                <h3>Adaptive practice</h3>
+                <p>Practice with prompts tailored to your level so every session helps you improve without feeling overwhelming.</p>
+            </article>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
 </html>
