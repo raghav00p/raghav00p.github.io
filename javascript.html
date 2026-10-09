@@ -23,14 +23,6 @@ pre {
   margin-top: 10px;
   white-space: pre-wrap;
 }
-#tit {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #ccc;
-  padding: 100px;
-  font-size: 100px;
-}
 
 </style>
 </head>
@@ -40,9 +32,6 @@ pre {
   <textarea id="codeInput" placeholder="Write your JavaScript code here..."></textarea>
 
   <pre id="output"></pre>
-  <div id="tit">
-    <h1> JAVASCRIPT </h1>
-  </div>
 <script>
   document.addEventListener("DOMContentLoaded", (event) => {
   const savedCode = localStorage.getItem("cod");
