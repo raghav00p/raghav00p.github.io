@@ -1,0 +1,74 @@
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript Code Runner</title>
+<style>
+  body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background-color: #333;
+}
+textarea {
+  width: 100%;
+  height: 100px;
+  background-color: #333;
+  border-radius: 3px;
+  color: #fff;
+}
+pre {
+  background-color: #ccc;
+  padding: 10px;
+  border: 1px #ccc;
+  border-radius: 3px;
+  margin-top: 10px;
+  white-space: pre-wrap;
+}
+#tit {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #ccc;
+  padding: 100px;
+  font-size: 100px;
+}
+
+</style>
+</head>
+
+<body>
+
+  <textarea id="codeInput" placeholder="Write your JavaScript code here..."></textarea>
+
+  <pre id="output"></pre>
+  <div id="tit">
+    <h1> JAVASCRIPT </h1>
+  </div>
+<script>
+  document.addEventListener("DOMContentLoaded", (event) => {
+  const savedCode = localStorage.getItem("cod");
+  if (savedCode) {
+    document.getElementById("codeInput").value = savedCode;
+    runCode(savedCode);
+  }
+});
+
+document.getElementById("codeInput").addEventListener("input", () => {
+  const code = document.getElementById("codeInput").value;
+  localStorage.setItem("cod", code);
+  runCode(code);
+});
+
+function runCode(code) {
+  const outputElement = document.getElementById("output");
+  try {
+    const result = eval(code);
+    outputElement.innerHTML = result === undefined ? "" : result;
+  } catch (error) {
+    outputElement.innerHTML = error;
+  }
+}
+
+</script>
+</body>
+
+</html>
