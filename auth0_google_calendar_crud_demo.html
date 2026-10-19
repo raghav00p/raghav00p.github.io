@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auth0 + Google Calendar CRUD Demo</title>
+<style>
+  :root { color-scheme: light dark; --accent:#4285f4; --border:rgba(128,128,128,.35); }
+  * { box-sizing:border-box; }
+  body { font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif; max-width:900px; margin:0 auto; padding:20px; }
+  h1 { font-size:1.55rem; margin:0 0 6px; }
+  h2 { font-size:1.1rem; margin:0 0 12px; }
+  p { margin:6px 0 12px; }
+  .muted { opacity:.72; font-size:.92rem; }
+  .panel { border:1px solid var(--border); border-radius:14px; padding:16px; margin:16px 0; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  button { cursor:pointer; border:1px solid var(--border); border-radius:9px; padding:10px 13px; font:inherit; background:transparent; }
+  button.primary { background:var(--accent); color:white; border-color:transparent; }
+  button.danger { color:#e55353; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  input, textarea { width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; font:inherit; background:transparent; }
+  label { display:block; font-size:.9rem; margin:10px 0 5px; }
+  .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 12px; }
+  .full { grid-column:1/-1; }
+  .event { padding:13px 0; border-bottom:1px solid var(--border); }
+  .event:last-child { border-bottom:0; }
+  .event-title { font-weight:650; overflow-wrap:anywhere; }
+  .event-meta { opacity:.72; font-size:.9rem; margin:3px 0 8px; }
+  #status { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.92rem; }
+  .ok { color:#18864b; } .err { color:#d14343; }
+  code { overflow-wrap:anywhere; }
+  @media(max-width:560px) { .grid { grid-template-columns:1fr; } .full { grid-column:auto; } body {padding:14px;} }
+</style>
+</head>
+<body>
+<h1>Google Calendar CRUD</h1>
+<p class="muted">Single-file demo · Auth0 website login · Google Calendar events API</p>
+
+<section class="panel">
+  <h2>1. Website authentication (Auth0)</h2>
+  <div class="row">
+    <button id="loginBtn" class="primary">Log in</button>
+    <button id="logoutBtn" disabled>Log out</button>
+    <span id="userLabel" class="muted">Not logged in</span>
+  </div>
+  <p class="muted">Set your Auth0 domain, client ID, and callback URL in the configuration below.</p>
+</section>
+
+<section class="panel">
+  <h2>2. Authorize Google Calendar</h2>
+  <div class="row">
+    <button id="connectGoogleBtn" class="primary" disabled>Connect Google Calendar</button>
+    <button id="disconnectGoogleBtn" disabled>Disconnect Calendar</button>
+    <span id="googleLabel" class="muted">Calendar not connected</span>
+  </div>
+  <p class="muted">Google Calendar consent is separate from Auth0 login. The Google access token stays in memory and is not saved to localStorage.</p>
+</section>
+
+<section class="panel">
+  <h2 id="formHeading">3. Create event</h2>
+  <form id="eventForm">
+    <div class="grid">
+      <div class="full">
+        <label for="summary">Title *</label>
+        <input id="summary" required maxlength="200" placeholder="Study Pediatrics">
+      </div>
+      <div>
+        <label for="start">Start *</label>
+        <input id="start" type="datetime-local" required>
+      </div>
+      <div>
+        <label for="end">End *</label>
+        <input id="end" type="datetime-local" required>
+      </div>
+      <div class="full">
+        <label for="description">Description</label>
+        <textarea id="description" rows="2" placeholder="Optional details"></textarea>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button id="saveBtn" class="primary" type="submit" disabled>Create event</button>
+      <button id="cancelEditBtn" type="button" hidden>Cancel edit</button>
+      <button id="refreshBtn" type="button" disabled>Refresh events</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="row" style="justify-content:space-between">
+    <h2 style="margin:0">4. Events</h2>
+    <span id="eventCount" class="muted">0 events</span>
+  </div>
+  <div id="events"><p class="muted">Log in and connect Google Calendar to load events.</p></div>
+</section>
+
+<section class="panel">
+  <h2>Status</h2>
+  <div id="status" role="status" aria-live="polite">Configure the credentials in the script before use.</div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2.2.0/dist/umd/auth0-spa-js.production.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+/*
+  CONFIGURATION
+  Auth0: create a Single Page Application in Auth0.
+  Google: enable Google Calendar API and create an OAuth Web application client ID.
+  Never put a Google client secret in this file.
+*/
+const CONFIG = {
+  auth0Domain: "YOUR_TENANT.REGION.auth0.com",
+  auth0ClientId: "YOUR_AUTH0_CLIENT_ID",
+  auth0CallbackUrl: location.origin + location.pathname,
+  googleClientId: "YOUR_GOOGLE_OAUTH_WEB_CLIENT_ID.apps.googleusercontent.com",
+  calendarScope: "https://www.googleapis.com/auth/calendar.events"
+};
+
+const $ = id => document.getElementById(id);
+let auth0Client = null;
+let user = null;
+let googleTokenClient = null;
+let googleAccessToken = null; // memory only
+let editingEventId = null;
+let events = [];
+let googleScriptReady = false;
+
+function status(message, type = "") {
+  $("status").className = type;
+  $("status").textContent = message;
+}
+function configured(value) {
+  return value && !value.startsWith("YOUR_");
+}
+function setDateDefaults() {
+  const now = new Date();
+  const later = new Date(now.getTime() + 60 * 60 * 1000);
+  const local = d => {
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  $("start").value = local(now);
+  $("end").value = local(later);
+}
+function updateUI() {
+  $("loginBtn").disabled = !!user;
+  $("logoutBtn").disabled = !user;
+  $("connectGoogleBtn").disabled = !user || !googleScriptReady;
+  $("disconnectGoogleBtn").disabled = !googleAccessToken;
+  $("refreshBtn").disabled = !googleAccessToken;
+  $("saveBtn").disabled = !googleAccessToken;
+  $("userLabel").textContent = user ? (user.name || user.email || "Logged in") : "Not logged in";
+  $("googleLabel").textContent = googleAccessToken ? "Calendar connected" : "Calendar not connected";
+}
+async function initAuth0() {
+  if (!configured(CONFIG.auth0Domain) || !configured(CONFIG.auth0ClientId)) {
+    status("Add auth0Domain and auth0ClientId in CONFIG, then reload.", "err");
+    return;
+  }
+  try {
+    auth0Client = await auth0.createAuth0Client({
+      domain: CONFIG.auth0Domain,
+      clientId: CONFIG.auth0ClientId,
+      authorizationParams: { redirect_uri: CONFIG.auth0CallbackUrl },
+      cacheLocation: "memory"
+    });
+    if (location.search.includes("code=") && location.search.includes("state=")) {
+      await auth0Client.handleRedirectCallback();
+      history.replaceState({}, document.title, CONFIG.auth0CallbackUrl);
+    }
+    user = await auth0Client.getUser();
+    updateUI();
+    if (user) status("Auth0 login successful. Connect Google Calendar to manage events.", "ok");
+  } catch (e) {
+    status("Auth0 initialization/login error: " + e.message, "err");
+  }
+}
+$("loginBtn").addEventListener("click", async () => {
+  try {
+    await auth0Client.loginWithRedirect({ authorizationParams: { redirect_uri: CONFIG.auth0CallbackUrl } });
+  } catch (e) { status("Login failed: " + e.message, "err"); }
+});
+$("logoutBtn").addEventListener("click", async () => {
+  googleAccessToken = null; events = []; user = null; renderEvents(); updateUI();
+  await auth0Client.logout({ logoutParams: { returnTo: location.origin + location.pathname } });
+});
+function initGoogleTokenClient() {
+  if (!configured(CONFIG.googleClientId)) {
+    status("Add googleClientId in CONFIG, then reload.", "err");
+    return;
+  }
+  if (!window.google || !google.accounts || !google.accounts.oauth2) {
+    status("Google authorization library is still loading. Try again in a moment.");
+    return;
+  }
+  googleTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.googleClientId,
+    scope: CONFIG.calendarScope,
+    callback: async response => {
+      if (response.error) {
+        status("Google authorization failed: " + response.error, "err");
+        return;
+      }
+      googleAccessToken = response.access_token;
+      updateUI();
+      status("Google Calendar access granted. Loading events…", "ok");
+      try { await loadEvents(); } catch (e) { status(e.message, "err"); }
+    },
+    error_callback: error => status("Google popup error: " + (error.message || error.type), "err")
+  });
+}
+$("connectGoogleBtn").addEventListener("click", () => {
+  if (!user) return;
+  if (!googleTokenClient) initGoogleTokenClient();
+  if (googleTokenClient) googleTokenClient.requestAccessToken({ prompt: "consent" });
+});
+$("disconnectGoogleBtn").addEventListener("click", () => {
+  if (googleAccessToken && window.google?.accounts?.oauth2) {
+    google.accounts.oauth2.revoke(googleAccessToken, () => {});
+  }
+  googleAccessToken = null; events = []; renderEvents(); updateUI();
+  status("Google Calendar disconnected. Your events were not deleted.");
+});
+
+async function api(path, method = "GET", body) {
+  if (!googleAccessToken) throw new Error("Connect Google Calendar first.");
+  const response = await fetch("https://www.googleapis.com/calendar/v3" + path, {
+    method,
+    headers: {
+      Authorization: "Bearer " + googleAccessToken,
+      ...(body ? { "Content-Type": "application/json" } : {})
+    },
+    ...(body ? { body: JSON.stringify(body) } : {})
+  });
+  if (response.status === 401) {
+    googleAccessToken = null; updateUI();
+    throw new Error("Google access token expired. Connect Google Calendar again.");
+  }
+  if (!response.ok) {
+    let detail = "";
+    try { detail = (await response.json()).error?.message || ""; } catch {}
+    throw new Error(`Calendar API ${response.status}${detail ? ": " + detail : ""}`);
+  }
+  if (response.status === 204) return null;
+  return response.json();
+}
+async function loadEvents() {
+  status("Loading events…");
+  const all = [];
+  let pageToken = "";
+  do {
+    const query = new URLSearchParams({ maxResults: "250", orderBy: "startTime", singleEvents: "true", timeMin: new Date().toISOString() });
+    if (pageToken) query.set("pageToken", pageToken);
+    const data = await api("/calendars/primary/events?" + query.toString());
+    all.push(...(data.items || []));
+    pageToken = data.nextPageToken || "";
+  } while (pageToken);
+  events = all;
+  renderEvents();
+  status(`Loaded ${events.length} upcoming event(s).`, "ok");
+}
+function eventDate(event) {
+  const value = event.start?.dateTime || event.start?.date;
+  if (!value) return "Time not specified";
+  if (event.start.date) return `${event.start.date} (all day)`;
+  return new Date(value).toLocaleString();
+}
+function renderEvents() {
+  $("eventCount").textContent = `${events.length} event${events.length === 1 ? "" : "s"}`;
+  const root = $("events");
+  root.replaceChildren();
+  if (!events.length) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = googleAccessToken ? "No upcoming events found." : "Log in and connect Google Calendar to load events.";
+    root.append(p);
+    return;
+  }
+  for (const event of events) {
+    const item = document.createElement("div"); item.className = "event";
+    const title = document.createElement("div"); title.className = "event-title"; title.textContent = event.summary || "(No title)";
+    const meta = document.createElement("div"); meta.className = "event-meta";
+    meta.textContent = eventDate(event) + (event.description ? " · " + event.description : "");
+    const actions = document.createElement("div"); actions.className = "row";
+    const edit = document.createElement("button"); edit.textContent = "Edit";
+    edit.addEventListener("click", () => beginEdit(event));
+    const del = document.createElement("button"); del.textContent = "Delete"; del.className = "danger";
+    del.addEventListener("click", async () => {
+      if (!confirm(`Permanently delete "${event.summary || "this event"}" from Google Calendar?`)) return;
+      del.disabled = true;
+      try {
+        await api("/calendars/primary/events/" + encodeURIComponent(event.id), "DELETE");
+        events = events.filter(e => e.id !== event.id); renderEvents();
+        status("Event deleted.", "ok");
+      } catch (e) { status(e.message, "err"); del.disabled = false; }
+    });
+    actions.append(edit, del); item.append(title, meta, actions); root.append(item);
+  }
+}
+function toLocalInput(value) {
+  const d = new Date(value);
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function beginEdit(event) {
+  if (!event.start?.dateTime || !event.end?.dateTime) {
+    status("This demo edits timed events only. All-day event editing is not implemented.", "err"); return;
+  }
+  editingEventId = event.id;
+  $("summary").value = event.summary || "";
+  $("description").value = event.description || "";
+  $("start").value = toLocalInput(event.start.dateTime);
+  $("end").value = toLocalInput(event.end.dateTime);
+  $("formHeading").textContent = "3. Edit event";
+  $("saveBtn").textContent = "Save changes";
+  $("cancelEditBtn").hidden = false;
+  $("summary").focus();
+}
+function resetForm() {
+  editingEventId = null;
+  $("eventForm").reset(); setDateDefaults();
+  $("formHeading").textContent = "3. Create event";
+  $("saveBtn").textContent = "Create event";
+  $("cancelEditBtn").hidden = true;
+}
+$("cancelEditBtn").addEventListener("click", resetForm);
+$("refreshBtn").addEventListener("click", async () => {
+  try { await loadEvents(); } catch (e) { status(e.message, "err"); }
+});
+$("eventForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const start = new Date($("start").value);
+  const end = new Date($("end").value);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+    status("End date/time must be later than start date/time.", "err"); return;
+  }
+  const payload = {
+    summary: $("summary").value.trim(),
+    description: $("description").value.trim(),
+    start: { dateTime: start.toISOString() },
+    end: { dateTime: end.toISOString() }
+  };
+  if (!payload.summary) { status("Enter an event title.", "err"); return; }
+  $("saveBtn").disabled = true;
+  try {
+    if (editingEventId) {
+      const updated = await api("/calendars/primary/events/" + encodeURIComponent(editingEventId), "PATCH", payload);
+      events = events.map(event => event.id === updated.id ? updated : event);
+      status("Event updated.", "ok");
+    } else {
+      const created = await api("/calendars/primary/events", "POST", payload);
+      events.push(created);
+      events.sort((a,b) => new Date(a.start?.dateTime || a.start?.date) - new Date(b.start?.dateTime || b.start?.date));
+      status("Event created.", "ok");
+    }
+    resetForm(); renderEvents();
+  } catch (e) { status(e.message, "err"); }
+  finally { updateUI(); }
+});
+$("start").addEventListener("change", () => {
+  if ($("end").value && $("end").value <= $("start").value) {
+    const d = new Date($("start").value); d.setHours(d.getHours()+1);
+    const pad = n => String(n).padStart(2,"0");
+    $("end").value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+});
+setDateDefaults();
+initAuth0();
+const googleReadyPoll = setInterval(() => {
+  if (window.google?.accounts?.oauth2) {
+    clearInterval(googleReadyPoll); googleScriptReady = true; updateUI();
+  }
+}, 200);
+setTimeout(() => clearInterval(googleReadyPoll), 15000);
+</script>
+</body>
+</html>
