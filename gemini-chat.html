@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gemini Chat</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+
+<style>
+  :root {
+    --bg: #0e1117;
+    --bg-elev-1: #161b22;
+    --bg-elev-2: #1c2128;
+    --bg-elev-3: #262c36;
+    --border: #2b3240;
+    --text: #e6e9ef;
+    --text-dim: #9aa4b2;
+    --text-faint: #6b7483;
+    --accent: #6c8cff;
+    --accent-2: #8b6cff;
+    --accent-contrast: #0b0e14;
+    --danger: #ff6b6b;
+    --success: #4ade80;
+    --bubble-user: #26406b;
+    --bubble-model: #1c2128;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 8px 24px rgba(0,0,0,0.35);
+    --code-bg: #0b0e14;
+  }
+  :root[data-theme="light"] {
+    --bg: #f5f6f8;
+    --bg-elev-1: #ffffff;
+    --bg-elev-2: #f0f1f4;
+    --bg-elev-3: #e7e9ee;
+    --border: #dcdfe6;
+    --text: #1a1d23;
+    --text-dim: #5b6372;
+    --text-faint: #8891a0;
+    --accent: #3c62e0;
+    --accent-2: #7b4ee0;
+    --accent-contrast: #ffffff;
+    --bubble-user: #dde6ff;
+    --bubble-model: #ffffff;
+    --shadow: 0 8px 24px rgba(20,20,30,0.08);
+    --code-bg: #f3f3f5;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  #app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar {
+    width: 290px;
+    min-width: 290px;
+    background: var(--bg-elev-1);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.2s ease;
+  }
+  #sidebar.collapsed { margin-left: -290px; }
+  .sidebar-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .sidebar-header {
+    padding: 14px;
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 0 2px 10px 2px;
+  }
+  .brand .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    flex-shrink: 0;
+  }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .btn {
+    background: var(--bg-elev-3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn:hover { background: var(--bg-elev-2); border-color: var(--accent); }
+  .btn.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: none;
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.icon { padding: 8px; }
+  .btn.block { width: 100%; justify-content: center; }
+  .btn.danger-outline { color: var(--danger); border-color: var(--danger); background: transparent; }
+  .btn.danger-outline:hover { background: rgba(255,107,107,0.1); }
+
+  .sidebar-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .sidebar-group-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    padding: 4px 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sidebar-group-title button {
+    background: none; border: none; color: var(--text-dim); font-size: 15px; line-height: 1;
+    padding: 2px 4px;
+  }
+  .sidebar-group-title button:hover { color: var(--accent); }
+
+  .chat-item, .gem-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--text-dim);
+    position: relative;
+  }
+  .chat-item:hover, .gem-item:hover { background: var(--bg-elev-2); color: var(--text); }
+  .chat-item.active, .gem-item.active {
+    background: var(--bg-elev-3);
+    color: var(--text);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .chat-item .title, .gem-item .title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .chat-item .row-actions, .gem-item .row-actions {
+    display: none;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .chat-item:hover .row-actions, .gem-item:hover .row-actions { display: flex; }
+  .row-actions button {
+    background: none; border: none; color: var(--text-faint); font-size: 13px;
+    padding: 3px 5px; border-radius: 6px;
+  }
+  .row-actions button:hover { color: var(--text); background: var(--bg-elev-1); }
+  .empty-hint {
+    color: var(--text-faint);
+    font-size: 12.5px;
+    padding: 6px 6px 10px 6px;
+    line-height: 1.5;
+  }
+
+  .sidebar-footer {
+    padding: 10px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+  }
+
+  /* ---------- Main ---------- */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-elev-1);
+  }
+  #chatTitle {
+    font-size: 14.5px;
+    font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: text;
+  }
+  .model-toggle {
+    display: flex;
+    background: var(--bg-elev-3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .model-toggle button {
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 11px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .model-toggle button.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+  }
+  .gem-select {
+    background: var(--bg-elev-3);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 9px;
+    font-size: 12.5px;
+    max-width: 160px;
+  }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 0 10px 0;
+  }
+  #messagesInner {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .welcome {
+    text-align: center;
+    color: var(--text-faint);
+    margin-top: 14vh;
+    padding: 0 20px;
+  }
+  .welcome h1 { font-size: 22px; color: var(--text-dim); font-weight: 700; margin-bottom: 6px;}
+  .welcome p { font-size: 13.5px; line-height: 1.6; max-width: 440px; margin: 0 auto; }
+
+  .msg-row { display: flex; gap: 10px; }
+  .msg-row.user { flex-direction: row-reverse; }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+    color: #fff;
+  }
+  .avatar.user-av { background: linear-gradient(135deg,#4a7bff,#6c4aff); }
+  .avatar.model-av { background: linear-gradient(135deg,#19a974,#0f8f8f); }
+
+  .bubble-col { display:flex; flex-direction:column; max-width: 76%; min-width: 0; }
+  .msg-row.user .bubble-col { align-items: flex-end; }
+
+  .bubble {
+    padding: 11px 14px;
+    border-radius: var(--radius);
+    font-size: 14.5px;
+    line-height: 1.6;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+  .msg-row.user .bubble {
+    background: var(--bubble-user);
+    border-top-right-radius: 4px;
+  }
+  .msg-row.model .bubble {
+    background: var(--bubble-model);
+    border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+  }
+  .bubble.error { border-color: var(--danger); color: var(--danger); background: rgba(255,107,107,0.08); }
+  .bubble p:first-child { margin-top: 0; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    overflow-x: auto;
+    position: relative;
+    font-size: 13px;
+  }
+  .bubble code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9em;
+  }
+  .bubble :not(pre) > code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+  .bubble table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0; }
+  .bubble th, .bubble td { border: 1px solid var(--border); padding: 6px 9px; text-align: left; }
+  .bubble blockquote { border-left: 3px solid var(--accent); margin: 8px 0; padding: 2px 12px; color: var(--text-dim); }
+  .bubble a { color: var(--accent); }
+  .bubble .mermaid { background: #fff; border-radius: 10px; padding: 10px; margin: 8px 0; overflow-x: auto; }
+  .copy-btn {
+    position: absolute; top: 6px; right: 6px;
+    background: var(--bg-elev-3); border: 1px solid var(--border); color: var(--text-dim);
+    font-size: 11px; padding: 3px 7px; border-radius: 6px;
+  }
+  .copy-btn:hover { color: var(--text); }
+
+  .msg-meta {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 4px;
+    padding: 0 4px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .msg-row.user .msg-meta { justify-content: flex-end; }
+
+  .sources-box {
+    margin-top: 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: var(--bg-elev-2);
+    font-size: 12px;
+  }
+  .sources-box .sources-title { color: var(--text-dim); font-weight: 600; margin-bottom: 5px; }
+  .sources-box a { display:block; color: var(--accent); text-decoration:none; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sources-box a:hover { text-decoration: underline; }
+
+  .typing-dots { display: inline-flex; gap: 3px; align-items: center; height: 14px; }
+  .typing-dots span {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--text-faint);
+    animation: blink 1.2s infinite ease-in-out;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+  /* ---------- Input ---------- */
+  #inputBar {
+    border-top: 1px solid var(--border);
+    background: var(--bg-elev-1);
+    padding: 12px 16px 16px 16px;
+  }
+  #inputInner {
+    max-width: 820px;
+    margin: 0 auto;
+  }
+  .input-tools {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .toggle-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-elev-3);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+  .toggle-chip.active {
+    color: var(--accent-contrast);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+  }
+  .input-shell {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 8px 8px 8px 14px;
+  }
+  .input-shell:focus-within { border-color: var(--accent); }
+  #textInput {
+    flex: 1;
+    resize: none;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 14.5px;
+    font-family: inherit;
+    max-height: 200px;
+    line-height: 1.5;
+    padding: 6px 0;
+  }
+  #sendBtn {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: none; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #sendBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .input-hint { text-align:center; color: var(--text-faint); font-size: 11px; margin-top: 7px; }
+  .input-hint a { color: var(--text-dim); cursor:pointer; }
+
+  /* ---------- Modals ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%; max-width: 460px;
+    max-height: 86vh;
+    display: flex; flex-direction: column;
+    box-shadow: var(--shadow);
+  }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px; border-bottom: 1px solid var(--border);
+  }
+  .modal-header h2 { font-size: 16px; margin: 0; }
+  .modal-header button { background: none; border: none; color: var(--text-dim); font-size: 18px; }
+  .modal-body { padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .modal-footer { padding: 14px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .field label { display:block; font-size: 12.5px; color: var(--text-dim); margin-bottom: 5px; font-weight: 600; }
+  .field input[type=text], .field input[type=password], .field textarea, .field select {
+    width: 100%;
+    background: var(--bg-elev-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 9px 10px;
+    font-size: 13.5px;
+    font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .field .hint { font-size: 11.5px; color: var(--text-faint); margin-top: 4px; }
+  .field .hint a { color: var(--accent); }
+  .key-row { display: flex; gap: 6px; }
+  .key-row input { flex: 1; }
+  .range-row { display: flex; align-items: center; gap: 10px; }
+  .range-row input[type=range] { flex: 1; }
+  .range-row .val { font-size: 12.5px; color: var(--text-dim); width: 28px; text-align: right; }
+
+  .gem-list-modal { display: flex; flex-direction: column; gap: 6px; }
+  .gem-row {
+    display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); font-size: 13px;
+  }
+  .gem-row .name { flex: 1; font-weight: 600; }
+  .gem-row .desc { color: var(--text-faint); font-size: 11.5px; }
+  .gem-row button { background:none; border:none; color: var(--text-dim); font-size: 13px; padding: 4px 6px; }
+  .gem-row button:hover { color: var(--accent); }
+
+  #toastHost { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 200; display:flex; flex-direction:column; gap:8px; align-items:center;}
+  .toast {
+    background: var(--bg-elev-3); border: 1px solid var(--border); color: var(--text);
+    padding: 9px 16px; border-radius: 999px; font-size: 13px; box-shadow: var(--shadow);
+  }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+
+  #menuBtn { display: none; }
+  @media (max-width: 820px) {
+    #sidebar { position: fixed; z-index: 50; height: 100vh; box-shadow: var(--shadow); }
+    #sidebar.collapsed { margin-left: -290px; }
+    #sidebar:not(.collapsed) { margin-left: 0; }
+    #menuBtn { display: flex; }
+    .bubble-col { max-width: 88%; }
+  }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--bg-elev-3); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <button class="btn primary block" id="newChatBtn">+ New chat</button>
+    </div>
+    <div class="sidebar-scroll">
+      <div class="sidebar-section">
+        <div class="sidebar-group-title">
+          <span>Gems</span>
+          <button id="newGemBtn" title="New gem">+</button>
+        </div>
+        <div id="gemList"></div>
+      </div>
+      <div class="sidebar-section" style="flex:1;">
+        <div class="sidebar-group-title"><span>Chats</span></div>
+        <div id="chatList"></div>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="btn block" id="settingsBtn">⚙ Settings</button>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div id="topbar">
+      <button class="btn icon" id="menuBtn" title="Toggle sidebar">☰</button>
+      <div id="chatTitle" title="Click to rename">New chat</div>
+      <select id="gemSelect" class="gem-select" title="Custom instructions (Gem)"></select>
+      <div class="model-toggle" id="modelToggle">
+        <button data-model="gemini-3.8-flash" class="active">Flash 3.8</button>
+        <button data-model="gemini-3.5-flash-lite">Flash-Lite 3.5</button>
+      </div>
+    </div>
+
+    <div id="messages"><div id="messagesInner"></div></div>
+
+    <div id="inputBar">
+      <div id="inputInner">
+        <div class="input-tools">
+          <button class="toggle-chip" id="webSearchToggle" title="Search the web with Exa before answering">🔎 Web search</button>
+          <span class="toggle-chip" id="themeToggle" style="cursor:pointer;">🌓 Theme</span>
+        </div>
+        <div class="input-shell">
+          <textarea id="textInput" rows="1" placeholder="Message Gemini… (Shift+Enter for a new line)"></textarea>
+          <button id="sendBtn" title="Send">➤</button>
+        </div>
+        <div class="input-hint">Markdown, LaTeX ($…$) and ```mermaid flowcharts render automatically. <a id="openSettingsLink">Set API keys</a></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ============ Settings Modal ============ -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-header"><h2>Settings</h2><button data-close="settingsModal">✕</button></div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Gemini API key</label>
+        <div class="key-row">
+          <input type="password" id="geminiKeyInput" placeholder="AIza…">
+          <button class="btn icon" data-toggle-pass="geminiKeyInput">👁</button>
+        </div>
+        <div class="hint">Stored only in this browser's local storage. Get a key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</div>
+      </div>
+      <div class="field">
+        <label>Exa API key (for web search)</label>
+        <div class="key-row">
+          <input type="password" id="exaKeyInput" placeholder="exa_…">
+          <button class="btn icon" data-toggle-pass="exaKeyInput">👁</button>
+        </div>
+        <div class="hint">Optional — only needed if you use the Web search toggle. Get a key at <a href="https://dashboard.exa.ai/api-keys" target="_blank" rel="noopener">dashboard.exa.ai</a>.</div>
+      </div>
+      <div class="field">
+        <label>Temperature</label>
+        <div class="range-row">
+          <input type="range" id="tempRange" min="0" max="2" step="0.1" value="1">
+          <span class="val" id="tempVal">1.0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Data</label>
+        <button class="btn danger-outline block" id="clearDataBtn">Clear all chats, gems &amp; keys</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" data-close="settingsModal">Cancel</button>
+      <button class="btn primary" id="saveSettingsBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Gems Modal ============ -->
+<div class="modal-overlay" id="gemsModal">
+  <div class="modal">
+    <div class="modal-header"><h2 id="gemModalTitle">New gem</h2><button data-close="gemsModal">✕</button></div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="gemNameInput" placeholder="e.g. Code Reviewer, Socratic Tutor, SQL Helper">
+      </div>
+      <div class="field">
+        <label>Custom instructions</label>
+        <textarea id="gemInstrInput" placeholder="Describe how this gem should behave, its persona, rules, output format, etc."></textarea>
+        <div class="hint">Sent to Gemini as the system instruction for any chat using this gem.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" data-close="gemsModal">Cancel</button>
+      <button class="btn primary" id="saveGemBtn">Save gem</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Manage Gems List Modal ============ -->
+<div class="modal-overlay" id="gemsListModal">
+  <div class="modal">
+    <div class="modal-header"><h2>Your gems</h2><button data-close="gemsListModal">✕</button></div>
+    <div class="modal-body">
+      <div class="gem-list-modal" id="gemsListBody"></div>
+      <button class="btn primary block" id="addGemFromListBtn">+ New gem</button>
+    </div>
+    <div class="modal-footer"><button class="btn" data-close="gemsListModal">Close</button></div>
+  </div>
+</div>
+
+<div id="toastHost"></div>
+
+<!-- ============ Libraries ============ -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= Utilities ================= */
+function uuid(){
+  if (window.crypto && crypto.randomUUID) { try { return crypto.randomUUID(); } catch(e){} }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+    var r = Math.random()*16|0, v = c==='x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function truncate(s, n){
+  s = (s||'').trim().replace(/\s+/g,' ');
+  return s.length > n ? s.slice(0, n).trim() + '…' : (s || 'New chat');
+}
+function formatTime(ts){
+  try { return new Date(ts).toLocaleString(); } catch(e){ return ''; }
+}
+function toast(msg, isError){
+  var host = document.getElementById('toastHost');
+  var el = document.createElement('div');
+  el.className = 'toast' + (isError ? ' error' : '');
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(function(){ el.remove(); }, isError ? 5000 : 2600);
+}
+
+/* ================= IndexedDB layer ================= */
+var DB_NAME = 'gemini_chat_db';
+var DB_VERSION = 1;
+var _dbPromise = null;
+
+function openDB(){
+  if (_dbPromise) return _dbPromise;
+  _dbPromise = new Promise(function(resolve, reject){
+    var req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function(ev){
+      var db = ev.target.result;
+      if (!db.objectStoreNames.contains('chats')) {
+        var chatStore = db.createObjectStore('chats', { keyPath: 'id' });
+        chatStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('gems')) {
+        db.createObjectStore('gems', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = function(ev){ resolve(ev.target.result); };
+    req.onerror = function(ev){ reject(ev.target.error); };
+  });
+  return _dbPromise;
+}
+function dbTxn(storeName, mode){
+  return openDB().then(function(db){ return db.transaction(storeName, mode).objectStore(storeName); });
+}
+function dbGetAll(storeName){
+  return dbTxn(storeName, 'readonly').then(function(store){
+    return new Promise(function(resolve, reject){
+      var req = store.getAll();
+      req.onsuccess = function(){ resolve(req.result || []); };
+      req.onerror = function(){ reject(req.error); };
+    });
+  });
+}
+function dbGet(storeName, id){
+  return dbTxn(storeName, 'readonly').then(function(store){
+    return new Promise(function(resolve, reject){
+      var req = store.get(id);
+      req.onsuccess = function(){ resolve(req.result || null); };
+      req.onerror = function(){ reject(req.error); };
+    });
+  });
+}
+function dbPut(storeName, obj){
+  return dbTxn(storeName, 'readwrite').then(function(store){
+    return new Promise(function(resolve, reject){
+      var req = store.put(obj);
+      req.onsuccess = function(){ resolve(obj); };
+      req.onerror = function(){ reject(req.error); };
+    });
+  });
+}
+function dbDelete(storeName, id){
+  return dbTxn(storeName, 'readwrite').then(function(store){
+    return new Promise(function(resolve, reject){
+      var req = store.delete(id);
+      req.onsuccess = function(){ resolve(); };
+      req.onerror = function(){ reject(req.error); };
+    });
+  });
+}
+function dbClearAll(){
+  return openDB().then(function(db){
+    return Promise.all(['chats','gems'].map(function(name){
+      return new Promise(function(resolve, reject){
+        var req = db.transaction(name, 'readwrite').objectStore(name).clear();
+        req.onsuccess = resolve; req.onerror = function(){ reject(req.error); };
+      });
+    }));
+  });
+}
+
+/* ================= App state ================= */
+var state = {
+  settings: {
+    geminiKey: '',
+    exaKey: '',
+    temperature: 1.0,
+    theme: 'dark'
+  },
+  chats: [],          // summary list, sorted desc by updatedAt
+  gems: [],
+  currentChat: null,  // full chat object incl. messages
+  webSearchOn: false,
+  sending: false,
+  editingGemId: null  // when set, gem modal is editing this gem
+};
+
+function loadSettings(){
+  try {
+    var raw = localStorage.getItem('gemini_chat_settings');
+    if (raw) Object.assign(state.settings, JSON.parse(raw));
+  } catch(e){}
+  document.documentElement.setAttribute('data-theme', state.settings.theme === 'light' ? 'light' : 'dark');
+}
+function saveSettingsToStorage(){
+  localStorage.setItem('gemini_chat_settings', JSON.stringify(state.settings));
+}
+
+/* ================= DOM refs ================= */
+var el = {
+  sidebar: document.getElementById('sidebar'),
+  menuBtn: document.getElementById('menuBtn'),
+  newChatBtn: document.getElementById('newChatBtn'),
+  chatList: document.getElementById('chatList'),
+  gemList: document.getElementById('gemList'),
+  newGemBtn: document.getElementById('newGemBtn'),
+  settingsBtn: document.getElementById('settingsBtn'),
+  chatTitle: document.getElementById('chatTitle'),
+  gemSelect: document.getElementById('gemSelect'),
+  modelToggle: document.getElementById('modelToggle'),
+  messages: document.getElementById('messages'),
+  messagesInner: document.getElementById('messagesInner'),
+  textInput: document.getElementById('textInput'),
+  sendBtn: document.getElementById('sendBtn'),
+  webSearchToggle: document.getElementById('webSearchToggle'),
+  themeToggle: document.getElementById('themeToggle'),
+  openSettingsLink: document.getElementById('openSettingsLink'),
+
+  settingsModal: document.getElementById('settingsModal'),
+  geminiKeyInput: document.getElementById('geminiKeyInput'),
+  exaKeyInput: document.getElementById('exaKeyInput'),
+  tempRange: document.getElementById('tempRange'),
+  tempVal: document.getElementById('tempVal'),
+  saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+  clearDataBtn: document.getElementById('clearDataBtn'),
+
+  gemsModal: document.getElementById('gemsModal'),
+  gemModalTitle: document.getElementById('gemModalTitle'),
+  gemNameInput: document.getElementById('gemNameInput'),
+  gemInstrInput: document.getElementById('gemInstrInput'),
+  saveGemBtn: document.getElementById('saveGemBtn'),
+
+  gemsListModal: document.getElementById('gemsListModal'),
+  gemsListBody: document.getElementById('gemsListBody'),
+  addGemFromListBtn: document.getElementById('addGemFromListBtn')
+};
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('[data-close]').forEach(function(btn){
+  btn.addEventListener('click', function(){ closeModal(btn.getAttribute('data-close')); });
+});
+document.querySelectorAll('.modal-overlay').forEach(function(ov){
+  ov.addEventListener('click', function(e){ if (e.target === ov) ov.classList.remove('open'); });
+});
+
+/* ================= Rendering: sidebar ================= */
+function renderChatList(){
+  el.chatList.innerHTML = '';
+  if (!state.chats.length) {
+    var hint = document.createElement('div');
+    hint.className = 'empty-hint';
+    hint.textContent = 'No chats yet. Start one below.';
+    el.chatList.appendChild(hint);
+    return;
+  }
+  state.chats.forEach(function(c){
+    var row = document.createElement('div');
+    row.className = 'chat-item' + (state.currentChat && state.currentChat.id === c.id ? ' active' : '');
+    row.innerHTML =
+      '<span class="title"></span>' +
+      '<span class="row-actions">' +
+        '<button data-act="rename" title="Rename">✎</button>' +
+        '<button data-act="delete" title="Delete">🗑</button>' +
+      '</span>';
+    row.querySelector('.title').textContent = c.title || 'New chat';
+    row.addEventListener('click', function(e){
+      if (e.target.closest('[data-act]')) return;
+      openChat(c.id);
+    });
+    row.querySelector('[data-act="rename"]').addEventListener('click', function(e){
+      e.stopPropagation();
+      renameChat(c.id);
+    });
+    row.querySelector('[data-act="delete"]').addEventListener('click', function(e){
+      e.stopPropagation();
+      removeChat(c.id);
+    });
+    el.chatList.appendChild(row);
+  });
+}
+
+function renderGemSidebarList(){
+  el.gemList.innerHTML = '';
+  if (!state.gems.length) {
+    var hint = document.createElement('div');
+    hint.className = 'empty-hint';
+    hint.textContent = 'Gems are reusable custom instructions / personas. Create one to tailor Gemini for a task.';
+    el.gemList.appendChild(hint);
+    return;
+  }
+  state.gems.forEach(function(g){
+    var row = document.createElement('div');
+    row.className = 'gem-item' + (state.currentChat && state.currentChat.gemId === g.id ? ' active' : '');
+    row.innerHTML =
+      '<span class="title"></span>' +
+      '<span class="row-actions">' +
+        '<button data-act="edit" title="Edit">✎</button>' +
+        '<button data-act="delete" title="Delete">🗑</button>' +
+      '</span>';
+    row.querySelector('.title').textContent = g.name;
+    row.addEventListener('click', function(e){
+      if (e.target.closest('[data-act]')) return;
+      if (state.currentChat) {
+        state.currentChat.gemId = g.id;
+        persistCurrentChat();
+        renderTopBar();
+        renderGemSidebarList();
+      }
+    });
+    row.querySelector('[data-act="edit"]').addEventListener('click', function(e){
+      e.stopPropagation();
+      openGemEditor(g);
+    });
+    row.querySelector('[data-act="delete"]').addEventListener('click', function(e){
+      e.stopPropagation();
+      removeGem(g.id);
+    });
+    el.gemList.appendChild(row);
+  });
+}
+
+function renderGemSelect(){
+  el.gemSelect.innerHTML = '';
+  var noneOpt = document.createElement('option');
+  noneOpt.value = '';
+  noneOpt.textContent = 'No gem';
+  el.gemSelect.appendChild(noneOpt);
+  state.gems.forEach(function(g){
+    var o = document.createElement('option');
+    o.value = g.id;
+    o.textContent = g.name;
+    el.gemSelect.appendChild(o);
+  });
+  el.gemSelect.value = (state.currentChat && state.currentChat.gemId) || '';
+}
+
+function renderTopBar(){
+  if (!state.currentChat) return;
+  el.chatTitle.textContent = state.currentChat.title || 'New chat';
+  renderGemSelect();
+  var model = state.currentChat.model || 'gemini-3.8-flash';
+  el.modelToggle.querySelectorAll('button').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-model') === model);
+  });
+}
+
+function renderGemsListModal(){
+  el.gemsListBody.innerHTML = '';
+  if (!state.gems.length) {
+    var hint = document.createElement('div');
+    hint.className = 'empty-hint';
+    hint.textContent = 'No gems yet.';
+    el.gemsListBody.appendChild(hint);
+    return;
+  }
+  state.gems.forEach(function(g){
+    var row = document.createElement('div');
+    row.className = 'gem-row';
+    row.innerHTML =
+      '<div style="flex:1; min-width:0;"><div class="name"></div><div class="desc"></div></div>' +
+      '<button data-act="edit">Edit</button><button data-act="delete">Delete</button>';
+    row.querySelector('.name').textContent = g.name;
+    row.querySelector('.desc').textContent = truncate(g.instructions, 70);
+    row.querySelector('[data-act="edit"]').addEventListener('click', function(){
+      closeModal('gemsListModal');
+      openGemEditor(g);
+    });
+    row.querySelector('[data-act="delete"]').addEventListener('click', function(){
+      removeGem(g.id).then(renderGemsListModal);
+    });
+    el.gemsListBody.appendChild(row);
+  });
+}
+
+/* ================= Chat CRUD ================= */
+function refreshChatSummaries(){
+  return dbGetAll('chats').then(function(chats){
+    chats.sort(function(a,b){ return (b.updatedAt||0) - (a.updatedAt||0); });
+    state.chats = chats.map(function(c){ return { id:c.id, title:c.title, updatedAt:c.updatedAt }; });
+    renderChatList();
+  });
+}
+function refreshGems(){
+  return dbGetAll('gems').then(function(gems){
+    gems.sort(function(a,b){ return (a.createdAt||0) - (b.createdAt||0); });
+    state.gems = gems;
+    renderGemSidebarList();
+    renderGemSelect();
+  });
+}
+
+function newChatObject(){
+  var now = Date.now();
+  return {
+    id: uuid(),
+    title: 'New chat',
+    model: (state.currentChat && state.currentChat.model) || 'gemini-3.8-flash',
+    gemId: (state.currentChat && state.currentChat.gemId) || '',
+    createdAt: now,
+    updatedAt: now,
+    messages: []
+  };
+}
+
+function startNewChat(){
+  state.currentChat = newChatObject();
+  renderTopBar();
+  renderMessages();
+  el.textInput.focus();
+  closeSidebarOnMobile();
+}
+
+function openChat(id){
+  dbGet('chats', id).then(function(chat){
+    if (!chat) { toast('Chat not found', true); return; }
+    state.currentChat = chat;
+    renderTopBar();
+    renderMessages();
+    renderChatList();
+    renderGemSidebarList();
+    closeSidebarOnMobile();
+  });
+}
+
+function persistCurrentChat(){
+  if (!state.currentChat) return Promise.resolve();
+  state.currentChat.updatedAt = Date.now();
+  return dbPut('chats', state.currentChat).then(function(){
+    return refreshChatSummaries();
+  });
+}
+
+function renameChat(id){
+  var c = state.chats.find(function(x){ return x.id === id; });
+  var nextTitle = prompt('Rename chat', c ? c.title : '');
+  if (nextTitle === null) return;
+  nextTitle = nextTitle.trim();
+  if (!nextTitle) return;
+  dbGet('chats', id).then(function(chat){
+    if (!chat) return;
+    chat.title = nextTitle;
+    chat.updatedAt = Date.now();
+    return dbPut('chats', chat);
+  }).then(function(){
+    if (state.currentChat && state.currentChat.id === id) state.currentChat.title = nextTitle;
+    renderTopBar();
+    return refreshChatSummaries();
+  });
+}
+
+function removeChat(id){
+  if (!confirm('Delete this chat? This cannot be undone.')) return;
+  dbDelete('chats', id).then(function(){
+    if (state.currentChat && state.currentChat.id === id) {
+      state.currentChat = null;
+      startNewChat();
+    }
+    return refreshChatSummaries();
+  });
+}
+
+/* ================= Gem CRUD ================= */
+function openGemEditor(gem){
+  state.editingGemId = gem ? gem.id : null;
+  el.gemModalTitle.textContent = gem ? 'Edit gem' : 'New gem';
+  el.gemNameInput.value = gem ? gem.name : '';
+  el.gemInstrInput.value = gem ? gem.instructions : '';
+  openModal('gemsModal');
+  el.gemNameInput.focus();
+}
+el.newGemBtn.addEventListener('click', function(){ openGemEditor(null); });
+el.saveGemBtn.addEventListener('click', function(){
+  var name = el.gemNameInput.value.trim();
+  var instructions = el.gemInstrInput.value.trim();
+  if (!name) { toast('Give the gem a name', true); return; }
+  var isEdit = !!state.editingGemId;
+  var gem = isEdit
+    ? Object.assign({}, state.gems.find(function(g){ return g.id === state.editingGemId; }))
+    : { id: uuid(), createdAt: Date.now() };
+  gem.name = name;
+  gem.instructions = instructions;
+  dbPut('gems', gem).then(function(){
+    closeModal('gemsModal');
+    return refreshGems();
+  }).then(function(){
+    toast(isEdit ? 'Gem updated' : 'Gem created');
+  });
+});
+function removeGem(id){
+  if (!confirm('Delete this gem?')) return Promise.resolve();
+  return dbDelete('gems', id).then(function(){
+    if (state.currentChat && state.currentChat.gemId === id) {
+      state.currentChat.gemId = '';
+      persistCurrentChat();
+    }
+    return refreshGems();
+  }).then(function(){
+    renderTopBar();
+  });
+}
+el.addGemFromListBtn.addEventListener('click', function(){
+  closeModal('gemsListModal');
+  openGemEditor(null);
+});
+
+/* ================= Markdown / KaTeX / Mermaid rendering ================= */
+if (window.marked) {
+  marked.setOptions({ breaks: true, gfm: true });
+}
+var mermaidReady = false;
+function ensureMermaid(){
+  if (mermaidReady || !window.mermaid) return;
+  mermaid.initialize({ startOnLoad: false, securityLevel: 'loose',
+    theme: (document.documentElement.getAttribute('data-theme') === 'light') ? 'default' : 'dark' });
+  mermaidReady = true;
+}
+
+function renderMarkdownToHtml(text){
+  var raw = window.marked ? marked.parse(text || '') : escapeHtml(text || '');
+  if (window.DOMPurify) {
+    return DOMPurify.sanitize(raw, { ADD_ATTR: ['target','rel'] });
+  }
+  return raw;
+}
+
+function enhanceBubble(bubbleEl){
+  // KaTeX math
+  if (window.renderMathInElement) {
+    try {
+      renderMathInElement(bubbleEl, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\(', right: '\\)', display: false }
+        ],
+        throwOnError: false
+      });
+    } catch(e){ /* ignore */ }
+  }
+  // Mermaid flowcharts: convert fenced ```mermaid blocks into diagrams
+  var mermaidBlocks = bubbleEl.querySelectorAll('pre code.language-mermaid');
+  if (mermaidBlocks.length) {
+    ensureMermaid();
+    mermaidBlocks.forEach(function(code){
+      var graphDef = code.textContent;
+      var div = document.createElement('div');
+      div.className = 'mermaid';
+      div.id = 'mmd-' + uuid().slice(0,8);
+      div.textContent = graphDef;
+      var pre = code.closest('pre');
+      if (pre) pre.replaceWith(div);
+    });
+    if (window.mermaid) {
+      try {
+        var nodes = bubbleEl.querySelectorAll('.mermaid');
+        mermaid.run({ nodes: nodes });
+      } catch(e){ console.error('Mermaid render error', e); }
+    }
+  }
+  // Copy buttons on remaining code blocks
+  bubbleEl.querySelectorAll('pre').forEach(function(pre){
+    if (pre.querySelector('.copy-btn')) return;
+    var codeEl = pre.querySelector('code');
+    var codeText = codeEl ? codeEl.innerText : pre.innerText;
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', function(){
+      navigator.clipboard.writeText(codeText).then(function(){
+        btn.textContent = 'Copied!';
+        setTimeout(function(){ btn.textContent = 'Copy'; }, 1400);
+      });
+    });
+    pre.appendChild(btn);
+  });
+}
+
+/* ================= Message rendering ================= */
+function renderMessages(){
+  el.messagesInner.innerHTML = '';
+  var msgs = (state.currentChat && state.currentChat.messages) || [];
+  if (!msgs.length) {
+    var w = document.createElement('div');
+    w.className = 'welcome';
+    w.innerHTML = '<h1>Gemini Chat</h1><p>Markdown, LaTeX formulas and Mermaid flowcharts render inline. Toggle web search to ground answers in live results, and pick a Gem above for custom instructions.</p>';
+    el.messagesInner.appendChild(w);
+    return;
+  }
+  msgs.forEach(function(m){ el.messagesInner.appendChild(buildMessageRow(m)); });
+  scrollToBottom();
+}
+
+function buildMessageRow(m){
+  var row = document.createElement('div');
+  row.className = 'msg-row ' + (m.role === 'user' ? 'user' : 'model');
+
+  var avatar = document.createElement('div');
+  avatar.className = 'avatar ' + (m.role === 'user' ? 'user-av' : 'model-av');
+  avatar.textContent = m.role === 'user' ? 'U' : 'G';
+
+  var col = document.createElement('div');
+  col.className = 'bubble-col';
+
+  var bubble = document.createElement('div');
+  bubble.className = 'bubble' + (m.error ? ' error' : '');
+  bubble.innerHTML = renderMarkdownToHtml(m.text);
+
+  var meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  meta.textContent = formatTime(m.timestamp) + (m.model ? ' · ' + prettyModel(m.model) : '');
+
+  col.appendChild(bubble);
+
+  if (m.sources && m.sources.length) {
+    var box = document.createElement('div');
+    box.className = 'sources-box';
+    var title = document.createElement('div');
+    title.className = 'sources-title';
+    title.textContent = 'Web sources';
+    box.appendChild(title);
+    m.sources.forEach(function(s, i){
+      var a = document.createElement('a');
+      a.href = s.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = '[' + (i+1) + '] ' + (s.title || s.url);
+      box.appendChild(a);
+    });
+    col.appendChild(box);
+  }
+
+  col.appendChild(meta);
+  row.appendChild(avatar);
+  row.appendChild(col);
+
+  enhanceBubble(bubble);
+  return row;
+}
+
+function prettyModel(m){
+  if (m === 'gemini-3.8-flash') return 'Flash 3.8';
+  if (m === 'gemini-3.5-flash-lite') return 'Flash-Lite 3.5';
+  return m;
+}
+
+function scrollToBottom(){
+  el.messages.scrollTop = el.messages.scrollHeight;
+}
+
+/* ================= Gemini API ================= */
+function geminiContentsFromMessages(messages){
+  return messages.map(function(m){
+    return { role: m.role, parts: [{ text: m.text }] };
+  });
+}
+
+function streamGemini(opts){
+  // opts: { apiKey, model, systemInstruction, contents, temperature, onChunk }
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+    encodeURIComponent(opts.model) + ':streamGenerateContent?alt=sse';
+  var body = { contents: opts.contents };
+  if (opts.systemInstruction) body.system_instruction = { parts: [{ text: opts.systemInstruction }] };
+  body.generationConfig = { temperature: typeof opts.temperature === 'number' ? opts.temperature : 1.0 };
+
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': opts.apiKey },
+    body: JSON.stringify(body)
+  }).then(function(res){
+    if (!res.ok || !res.body) {
+      return res.json().catch(function(){ return null; }).then(function(errJson){
+        var msg = 'Gemini API error (' + res.status + ')';
+        if (errJson && errJson.error && errJson.error.message) msg += ': ' + errJson.error.message;
+        throw new Error(msg);
+      });
+    }
+    var reader = res.body.getReader();
+    var decoder = new TextDecoder();
+    var buffer = '';
+    var fullText = '';
+
+    function pump(){
+      return reader.read().then(function(result){
+        if (result.done) {
+          // flush any trailing buffered event
+          if (buffer.trim()) consumeChunk(buffer);
+          return fullText;
+        }
+        buffer += decoder.decode(result.value, { stream: true });
+        var events = buffer.split('\n\n');
+        buffer = events.pop();
+        events.forEach(consumeChunk);
+        return pump();
+      });
+    }
+    function consumeChunk(evt){
+      var lines = evt.split('\n');
+      lines.forEach(function(line){
+        line = line.trim();
+        if (!line.startsWith('data:')) return;
+        var jsonStr = line.slice(5).trim();
+        if (!jsonStr || jsonStr === '[DONE]') return;
+        var obj;
+        try { obj = JSON.parse(jsonStr); } catch(e){ return; }
+        if (obj.promptFeedback && obj.promptFeedback.blockReason) {
+          throw new Error('Blocked by safety settings: ' + obj.promptFeedback.blockReason);
+        }
+        var cand = obj.candidates && obj.candidates[0];
+        var piece = '';
+        if (cand && cand.content && cand.content.parts) {
+          piece = cand.content.parts.map(function(p){ return p.text || ''; }).join('');
+        }
+        if (piece) {
+          fullText += piece;
+          if (opts.onChunk) opts.onChunk(fullText, piece);
+        }
+      });
+    }
+    return pump();
+  });
+}
+
+/* ================= Exa web search ================= */
+function exaSearch(apiKey, query, numResults){
+  return fetch('https://api.exa.ai/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+    body: JSON.stringify({
+      query: query,
+      numResults: numResults || 5,
+      contents: { text: { maxCharacters: 500 }, highlights: true }
+    })
+  }).then(function(res){
+    if (!res.ok) {
+      return res.json().catch(function(){ return null; }).then(function(j){
+        var msg = 'Exa search error (' + res.status + ')';
+        if (j && j.error) msg += ': ' + (typeof j.error === 'string' ? j.error : JSON.stringify(j.error));
+        throw new Error(msg);
+      });
+    }
+    return res.json();
+  }).then(function(data){
+    return (data.results || []).map(function(r){
+      var text = r.text || (r.highlights && r.highlights.join(' ')) || '';
+      return { title: r.title || r.url, url: r.url, text: text.slice(0, 500) };
+    });
+  });
+}
+function buildSearchContext(results){
+  return results.map(function(r, i){
+    return '[' + (i+1) + '] ' + r.title + '\n' + r.url + '\n' + r.text;
+  }).join('\n\n');
+}
+
+/* ================= Send flow ================= */
+function autoResizeTextarea(){
+  el.textInput.style.height = 'auto';
+  el.textInput.style.height = Math.min(el.textInput.scrollHeight, 200) + 'px';
+}
+el.textInput.addEventListener('input', autoResizeTextarea);
+el.textInput.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleSend();
+  }
+});
+el.sendBtn.addEventListener('click', handleSend);
+
+function setSending(v){
+  state.sending = v;
+  el.sendBtn.disabled = v;
+  el.textInput.disabled = v;
+}
+
+function handleSend(){
+  if (state.sending) return;
+  var text = el.textInput.value.trim();
+  if (!text) return;
+  if (!state.settings.geminiKey) {
+    toast('Add your Gemini API key in Settings first', true);
+    openModal('settingsModal');
+    return;
+  }
+  if (state.webSearchOn && !state.settings.exaKey) {
+    toast('Add your Exa API key in Settings, or turn off Web search', true);
+    openModal('settingsModal');
+    return;
+  }
+  if (!state.currentChat) startNewChat();
+
+  el.textInput.value = '';
+  autoResizeTextarea();
+
+  var chat = state.currentChat;
+  var userMsg = { role: 'user', text: text, timestamp: Date.now() };
+  chat.messages.push(userMsg);
+  if (chat.title === 'New chat') chat.title = truncate(text, 42);
+  renderMessages();
+  persistCurrentChat();
+
+  setSending(true);
+
+  var searchPromise = Promise.resolve(null);
+  var searchingRow = null;
+  if (state.webSearchOn) {
+    searchingRow = appendStatusRow('Searching the web…');
+    searchPromise = exaSearch(state.settings.exaKey, text, 5).catch(function(err){
+      toast(err.message, true);
+      return [];
+    });
+  }
+
+  searchPromise.then(function(sources){
+    if (searchingRow) searchingRow.remove();
+
+    var apiContents = geminiContentsFromMessages(chat.messages);
+    if (sources && sources.length) {
+      var ctx = buildSearchContext(sources);
+      var lastIdx = apiContents.length - 1;
+      apiContents[lastIdx] = {
+        role: 'user',
+        parts: [{ text: text + '\n\n---\nWeb search results (cite as [1], [2], … where you use them):\n' + ctx }]
+      };
+      userMsg.sources = sources;
+    }
+
+    var gem = chat.gemId ? state.gems.find(function(g){ return g.id === chat.gemId; }) : null;
+    var systemInstruction = gem ? gem.instructions : '';
+
+    var modelMsg = { role: 'model', text: '', model: chat.model, timestamp: Date.now() };
+    chat.messages.push(modelMsg);
+    var row = buildMessageRow(modelMsg);
+    el.messagesInner.appendChild(row);
+    var bubbleEl = row.querySelector('.bubble');
+    bubbleEl.innerHTML = '<span class="typing-dots"><span></span><span></span><span></span></span>';
+    scrollToBottom();
+
+    var lastRenderAt = 0;
+    streamGemini({
+      apiKey: state.settings.geminiKey,
+      model: chat.model,
+      systemInstruction: systemInstruction,
+      contents: apiContents,
+      temperature: state.settings.temperature,
+      onChunk: function(fullText){
+        modelMsg.text = fullText;
+        var now = Date.now();
+        if (now - lastRenderAt > 60) {
+          bubbleEl.innerHTML = renderMarkdownToHtml(fullText);
+          lastRenderAt = now;
+          scrollToBottom();
+        }
+      }
+    }).then(function(fullText){
+      modelMsg.text = fullText || '(No response text returned.)';
+      bubbleEl.innerHTML = renderMarkdownToHtml(modelMsg.text);
+      enhanceBubble(bubbleEl);
+      if (userMsg.sources && userMsg.sources.length) {
+        // re-render the user's row to show the sources box now that it's set
+        renderMessages();
+      }
+      persistCurrentChat();
+      setSending(false);
+      scrollToBottom();
+    }).catch(function(err){
+      modelMsg.text = 'Error: ' + err.message;
+      modelMsg.error = true;
+      bubbleEl.parentElement.querySelector('.bubble').className = 'bubble error';
+      bubbleEl.innerHTML = escapeHtml(modelMsg.text);
+      persistCurrentChat();
+      setSending(false);
+      toast(err.message, true);
+    });
+  });
+}
+
+function appendStatusRow(text){
+  var row = document.createElement('div');
+  row.className = 'msg-row model';
+  row.innerHTML = '<div class="avatar model-av">G</div><div class="bubble-col"><div class="bubble" style="color:var(--text-faint); font-style:italic;">' + escapeHtml(text) + ' <span class="typing-dots"><span></span><span></span><span></span></span></div></div>';
+  el.messagesInner.appendChild(row);
+  scrollToBottom();
+  return row;
+}
+
+/* ================= Model toggle ================= */
+el.modelToggle.addEventListener('click', function(e){
+  var btn = e.target.closest('button[data-model]');
+  if (!btn || !state.currentChat) return;
+  state.currentChat.model = btn.getAttribute('data-model');
+  renderTopBar();
+  persistCurrentChat();
+});
+
+/* ================= Gem select (top bar) ================= */
+el.gemSelect.addEventListener('change', function(){
+  if (!state.currentChat) return;
+  state.currentChat.gemId = el.gemSelect.value;
+  persistCurrentChat();
+  renderGemSidebarList();
+});
+
+/* ================= Chat title rename (top bar) ================= */
+el.chatTitle.addEventListener('click', function(){
+  if (!state.currentChat) return;
+  renameChatInline();
+});
+function renameChatInline(){
+  var next = prompt('Rename chat', state.currentChat.title || '');
+  if (next === null) return;
+  next = next.trim();
+  if (!next) return;
+  state.currentChat.title = next;
+  renderTopBar();
+  persistCurrentChat();
+}
+
+/* ================= Web search toggle ================= */
+el.webSearchToggle.addEventListener('click', function(){
+  state.webSearchOn = !state.webSearchOn;
+  el.webSearchToggle.classList.toggle('active', state.webSearchOn);
+});
+
+/* ================= Theme toggle ================= */
+el.themeToggle.addEventListener('click', function(){
+  var cur = document.documentElement.getAttribute('data-theme');
+  var next = cur === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  state.settings.theme = next;
+  saveSettingsToStorage();
+  mermaidReady = false; // re-init with new theme on next diagram
+});
+
+/* ================= Sidebar toggle (mobile) ================= */
+el.menuBtn.addEventListener('click', function(){
+  el.sidebar.classList.toggle('collapsed');
+});
+function closeSidebarOnMobile(){
+  if (window.innerWidth <= 820) el.sidebar.classList.add('collapsed');
+}
+if (window.innerWidth <= 820) el.sidebar.classList.add('collapsed');
+
+/* ================= Settings modal ================= */
+el.settingsBtn.addEventListener('click', openSettings);
+el.openSettingsLink.addEventListener('click', openSettings);
+function openSettings(){
+  el.geminiKeyInput.value = state.settings.geminiKey || '';
+  el.exaKeyInput.value = state.settings.exaKey || '';
+  el.tempRange.value = state.settings.temperature;
+  el.tempVal.textContent = Number(state.settings.temperature).toFixed(1);
+  openModal('settingsModal');
+}
+el.tempRange.addEventListener('input', function(){
+  el.tempVal.textContent = Number(el.tempRange.value).toFixed(1);
+});
+document.querySelectorAll('[data-toggle-pass]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var input = document.getElementById(btn.getAttribute('data-toggle-pass'));
+    input.type = input.type === 'password' ? 'text' : 'password';
+  });
+});
+el.saveSettingsBtn.addEventListener('click', function(){
+  state.settings.geminiKey = el.geminiKeyInput.value.trim();
+  state.settings.exaKey = el.exaKeyInput.value.trim();
+  state.settings.temperature = parseFloat(el.tempRange.value);
+  saveSettingsToStorage();
+  closeModal('settingsModal');
+  toast('Settings saved');
+});
+el.clearDataBtn.addEventListener('click', function(){
+  if (!confirm('This deletes all chats, gems and your saved API keys from this browser. Continue?')) return;
+  dbClearAll().then(function(){
+    localStorage.removeItem('gemini_chat_settings');
+    location.reload();
+  });
+});
+
+/* ================= Boot ================= */
+function boot(){
+  loadSettings();
+  Promise.all([refreshChatSummaries(), refreshGems()]).then(function(){
+    startNewChat();
+  }).catch(function(err){
+    console.error(err);
+    toast('Could not open local storage: ' + err.message, true);
+    startNewChat();
+  });
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
