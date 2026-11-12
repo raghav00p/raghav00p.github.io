@@ -1,6 +1,8 @@
 # web tutorials
 ## [1. pwa](https://raghav00p.github.io)
 ## [2. flashcards](https://raghav00p.github.io/flashcards.html)
+## [2. flashcards](https://raghav00p.github.io/gemini-chat.html)
+
 
 ### Deploying the PWA 🚀
 This repository hosts a simple Progressive Web App (PWA) at the root path. To deploy it so people can install and use it from a browser:
