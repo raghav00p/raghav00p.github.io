@@ -1,353 +1,39 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#101010">
-<title>Habit Timer</title>
-
+<title>OneJSONFile API Test</title>
 <style>
-*{box-sizing:border-box}
-
-body{
- margin:0;
- min-height:100vh;
- min-height:100dvh;
- background:#101010;
- color:#f4f4f4;
- font-family:system-ui,sans-serif;
- display:grid;
- place-items:center;
- padding:24px;
-}
-
-main{
- width:100%;
- text-align:center;
-}
-
-#timer{
- font-size:clamp(3.5rem,17vw,6rem);
- font-weight:650;
- letter-spacing:-.075em;
- font-variant-numeric:tabular-nums;
- white-space:nowrap;
-}
-
-#stage{
- margin-top:14px;
- color:#777;
- font-size:.9rem;
-}
-
-button{
- display:block;
- margin:34px auto 0;
- border:1px solid #3a3a3a;
- background:#1b1b1b;
- color:#eee;
- border-radius:999px;
- padding:12px 22px;
- font:500 .9rem system-ui,sans-serif;
- cursor:pointer;
- min-height:44px;
-}
-
-button:disabled{
- opacity:.4;
- cursor:wait;
-}
+body{font:16px system-ui;padding:20px;max-width:500px;margin:auto}
+button{padding:14px;width:100%;margin:8px 0}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#eee;padding:12px}
 </style>
 </head>
-
 <body>
-
-<main>
- <div id="timer">06:00:00</div>
- <div id="stage">6 hours</div>
- <button id="action" disabled>Loading...</button>
-</main>
+<h2>OneJSONFile connection test</h2>
+<button onclick="testAPI()">Test connection and create file</button>
+<pre id="result">Waiting...</pre>
 
 <script>
-
-// ======================================
-// EDIT THESE TWO LINES
-// ======================================
-
-const APP_ID = '01a1d9a5-5c7f-7f42-b5da-39aa5d4716c9';
-const APP_TOKEN = 'kv_c96303e9_c96303e931e0ad254b0b69163d1300e19b142369030b168b';
-
-// ======================================
-
-(()=>{
-const API='https://kv.devh.in/kv/';
-const REMOTE_KEY='habit-cycle-state';
-
-const intervals=[
- 6*3600,
- 12*3600,
- 24*3600,
- 2*86400,
- 4*86400,
- 8*86400,
- 16*86400,
- 32*86400,
- 64*86400
-];
-
-const names=[
- '6 hours','12 hours','24 hours',
- '2 days','4 days','8 days',
- '16 days','32 days','64 days'
-];
-
-const timer=document.getElementById('timer');
-const stage=document.getElementById('stage');
-const action=document.getElementById('action');
-
-let state={
- level:0,
- status:'ready',
- startedAt:null,
- endsAt:null
-};
-
-let ready=false;
-let busy=false;
-
-const endpoint=API+
- encodeURIComponent(APP_ID)+'/'+
- encodeURIComponent(REMOTE_KEY);
-
-function format(seconds){
- seconds=Math.max(0,Math.ceil(seconds));
-
- const days=Math.floor(seconds/86400);
- seconds%=86400;
-
- const hours=Math.floor(seconds/3600);
- seconds%=3600;
-
- const minutes=Math.floor(seconds/60);
- const secs=seconds%60;
-
- const clock=[hours,minutes,secs]
-  .map(v=>String(v).padStart(2,'0'))
-  .join(':');
-
- return days?`${days}d ${clock}`:clock;
-}
-
-function render(){
- const level=Math.min(state.level,8);
-
- const remaining=
-  state.status==='running'
-   ?Math.max(0,(state.endsAt-Date.now())/1000)
-   :state.status==='won'?0:intervals[level];
-
- timer.textContent=format(remaining);
- stage.textContent=names[level];
-
- action.textContent=
-  !ready?'Loading...':
-  state.status==='running'
-   ?'Sorry, break it'
-   :state.status==='won'
-    ?'You won. Start next round'
-    :'Start';
-
- action.disabled=!ready||busy;
-}
-
-// ======================================
-// REMOTE STORAGE
-// ======================================
-
-// Save JSON remotely.
-async function save(){
- const response=await fetch(endpoint,{
-  method:'PUT',
-  headers:{
-   'Authorization':'Bearer '+APP_TOKEN,
-   'Content-Type':'application/json'
-  },
-  body:JSON.stringify(state)
- });
-
- if(!response.ok){
-  throw new Error('Save failed: HTTP '+response.status);
- }
-}
-
-// Retrieve JSON remotely.
-async function load(){
- const response=await fetch(endpoint,{
-  method:'GET'
- });
-
- // First-time initialization.
- if(response.status===404){
-  await save();
-  return;
- }
-
- if(!response.ok){
-  throw new Error('Load failed: HTTP '+response.status);
- }
-
- const raw=await response.text();
-
- if(!raw || raw==='null'){
-  await save();
-  return;
- }
-
- const remote=JSON.parse(raw);
-
- if(!remote ||
-    !Number.isInteger(remote.level) ||
-    remote.level<0 ||
-    remote.level>8 ||
-    !['ready','running','won'].includes(remote.status)){
-  throw new Error('Invalid remote timer data');
- }
-
- state=remote;
-}
-
-// ======================================
-// TIMER LOGIC
-// ======================================
-
-function start(){
- const now=Date.now();
-
- state.status='running';
- state.startedAt=now;
-
- state.endsAt=
-  now+intervals[Math.min(state.level,8)]*1000;
-}
-
-async function checkTimer(){
- if(!ready||busy)return;
-
- if(state.status==='running' &&
-    Date.now()>=state.endsAt){
-
-  busy=true;
-  render();
-
-  try{
-   state.status='won';
-   await save();
-  }catch(error){
-   console.error(error);
-   alert('Could not save completion remotely.');
-   state.status='running';
-  }
-
-  busy=false;
- }
-
- render();
-}
-
-// ======================================
-// MAIN BUTTON
-// ======================================
-
-action.addEventListener('click',async()=>{
- if(!ready||busy)return;
-
- if(state.status==='running'){
-
-  const pledge=
-   'You made a promise to yourself to stay committed to this cycle. Remember why you started.\n\n'+
-   'Are you sure you want to break this cycle? '+
-   'Your progress will reset to 6 hours, and the cycle will start again.';
-
-  if(!confirm(pledge))return;
- }
-
- busy=true;
- render();
-
- const previous={...state};
-
+async function testAPI(){
+ const out=document.getElementById("result");
+ out.textContent="Testing...";
  try{
-
-  if(state.status==='ready'){
-   start();
-  }
-
-  else if(state.status==='running'){
-   state={
-    level:0,
-    status:'ready',
-    startedAt:null,
-    endsAt:null
-   };
-  }
-
-  else if(state.status==='won'){
-   state.level=Math.min(state.level+1,8);
-   start();
-  }
-
-  await save();
-
- }catch(error){
-  console.error(error);
-  state=previous;
-  alert('Remote storage failed. Your progress was not confirmed.');
- }
-
- busy=false;
- render();
-});
-
-// ======================================
-// INITIALIZATION
-// ======================================
-
-async function initialize(){
- try{
-  if(APP_ID==='YOUR_APP_ID' ||
-     APP_TOKEN==='YOUR_APP_TOKEN'){
-   throw new Error('Add your App ID and Token.');
-  }
-
-  await load();
-
-  if(state.status==='running' &&
-     Date.now()>=state.endsAt){
-   state.status='won';
-   await save();
-  }
-
-  ready=true;
-  render();
-
- }catch(error){
-  console.error(error);
-  action.textContent='Connection failed';
-  action.disabled=true;
+  const r=await fetch("https://onejsonfile.com/api/v1/anonymous",{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({content:{test:true}})
+  });
+  const body=await r.text();
+  out.textContent="HTTP status: "+r.status+
+    "\nResponse:\n"+body;
+ }catch(e){
+  out.textContent="Browser error: "+e.name+
+    "\n"+e.message+
+    "\n\nPossible causes: CORS, network, or server failure.";
  }
 }
-
-render();
-initialize();
-
-setInterval(checkTimer,1000);
-
-document.addEventListener('visibilitychange',()=>{
- if(!document.hidden)checkTimer();
-});
-
-})();
 </script>
 </body>
 </html>
