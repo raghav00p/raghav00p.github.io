@@ -1,31 +1,34 @@
 # web tutorials
 ## [1. pwa](https://raghav00p.github.io)
 ## [2. flashcards](https://raghav00p.github.io/flashcards.html)
-## [2. flashcards](https://raghav00p.github.io/gemini-chat.html)
-
 
 ### Deploying the PWA 🚀
-This repository hosts a simple Progressive Web App (PWA) at the root path. To deploy it so people can install and use it from a browser:
+This repository hosts a Progressive Web App at the root path. The app is installable from supported browsers when the manifest and service worker are correctly wired up in the page.
 
 1. **GitHub Pages** (the quickest way):
    * Push your code to the `main` branch of a repository named `username.github.io` (this repo already qualifies).
-   * Github automatically serves the site at `https://username.github.io/` (replace `username` with `raghav00p`).
-   * The service worker (`service-worker.js`) and `manifest.json` are already configured; ensure they are referenced in your HTML so the PWA installs correctly.  
-   * You can test locally with a simple HTTP server:  
-     ```
+   * GitHub automatically serves the site at `https://username.github.io/` (replace `username` with `raghav00p`).
+   * The app includes a manifest file and a registered service worker so browsers can prompt for installation.
+   * You can test locally with:
+     ```bash
      python3 -m http.server 8000
      ```
-   * Once changes are pushed, the updated PWA will be live within minutes.
+   * Open the site over `http://localhost:8000` or your GitHub Pages URL, then use the browser install prompt or the address bar install button.
 
-2. **Alternative hosts**: Any static hosting (Netlify, Vercel, Firebase Hosting, etc.) works—just upload the contents of this repo and point a custom domain if needed.
+2. **Alternative hosts**: Any static hosting (Netlify, Vercel, Firebase Hosting, etc.) works—upload the repo contents and point a custom domain if needed.
 
-3. **Testing**: Open Chrome/Edge devtools → **Application** tab to inspect the manifest and service worker. Use Lighthouse to audit the PWA installation experience.
+3. **PWA checklist**:
+   * `index.html` references `./manifest.json` and registers `./service-worker.js`.
+   * `manifest.json` defines a standalone app with an icon set and a valid `start_url`/`scope`.
+   * The page is served over HTTPS or `localhost`, which is required for service workers.
 
-4. **Offline behavior**: The included `service-worker.js` should cache assets; verify by switching the network to "Offline" in devtools.
+4. **Testing**: Open Chrome/Edge DevTools → **Application** tab to inspect the manifest and service worker. Use Lighthouse to audit the installability and offline behavior.
+
+5. **Offline behavior**: The app caches core assets in `service-worker.js`; verify by switching the network to "Offline" in DevTools.
 
 ---
 
-shortcut
+Shortcut
 ```bash
 python3 -m http.server 8000
 ```

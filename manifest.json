@@ -1,22 +1,23 @@
 {
-  "name": "Master Mind",
-  "short_name": "Master Mind",
-  "description": "Master Mind",
-  "start_url": "/",
-  "scope": "/",
+  "name": "HTML App Shelf",
+  "short_name": "App Shelf",
+  "description": "A simple home for your HTML apps.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#2196F3",
-  "background_color": "#ffffff",
+  "theme_color": "#101827",
+  "background_color": "#0c111b",
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
