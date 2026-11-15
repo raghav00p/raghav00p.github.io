@@ -1,4 +1,4 @@
-const CACHE_NAME = 'html-app-shelf-v2';
+const CACHE_NAME = 'html-app-shef-v2';
 const urlsToCache = [
   './',
   './index.html',
