@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>HTML App Shelf</title>
+<style>
+:root{color-scheme:dark;--bg:#0c111b;--surface:#141c29;--surface2:#1a2637;--line:#273448;--text:#edf2fa;--muted:#91a0b5;--accent:#8ab4ff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{max-width:980px;margin:auto;padding:34px 24px 20px}
+.brand{display:flex;align-items:center;gap:13px}
+.logo{width:42px;height:42px;border-radius:13px;background:#203754;color:#a9cbff;display:grid;place-items:center;font-size:21px}
+h1{font-size:21px;line-height:1.2;letter-spacing:-.5px;margin:0;font-weight:700}
+header p{font-size:13px;color:var(--muted);margin:4px 0 0}
+main{max-width:980px;margin:auto;padding:8px 24px 48px}
+.toolbar{display:flex;align-items:center;gap:12px;margin:16px 0 24px}
+button,.file-label{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:11px;padding:10px 15px;font:600 14px system-ui;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,border-color .15s}
+.file-label.primary{background:#dce9ff;color:#17263d;border-color:#dce9ff}
+button:hover,.file-label:hover{border-color:#58739a;background:var(--surface2)}
+.file-label.primary:hover{background:#c9ddff}
+button:focus-visible,.file-label:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+input[type=file]{display:none}
+.search{margin-left:auto;width:min(300px,45%);background:var(--surface);border:1px solid var(--line);border-radius:11px;color:var(--text);padding:10px 13px;font:14px system-ui}
+.search::placeholder{color:#718198}
+.stats{color:var(--muted);font-size:12px;margin:0 0 13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px}
+.app{position:relative;min-height:145px;padding:19px 12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:transform .16s,border-color .16s,background .16s}
+.app:hover{transform:translateY(-2px);border-color:#526b8d;background:#182334}
+.app:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.app-icon{width:57px;height:57px;border-radius:16px;display:grid;place-items:center;background:#22334a;font-size:28px;overflow:hidden}
+.app-icon img{width:100%;height:100%;object-fit:cover}
+.app-name{font-weight:600;font-size:13px;line-height:1.35;max-width:100%;overflow-wrap:anywhere}
+.app-meta{font-size:11px;color:var(--muted)}
+.menu{position:absolute;right:7px;top:7px;width:30px;height:30px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:19px}
+.menu:hover{background:var(--surface2);color:var(--text)}
+.empty{border:1px dashed #34445a;border-radius:16px;padding:42px 20px;text-align:center;color:var(--muted);grid-column:1/-1}
+.empty strong{display:block;color:var(--text);font-size:15px;margin-bottom:5px}
+.note{margin-top:25px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:12px}
+.note strong{color:#cbd7e8}
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--text);width:min(420px,calc(100% - 28px));padding:22px;box-shadow:0 24px 70px #0009}
+dialog::backdrop{background:#030711bb}
+dialog h2{margin:0 0 14px;font-size:18px}
+dialog label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
+dialog input[type=text]{width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;background:#0d1521;color:var(--text);font:14px system-ui}
+dialog .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+button.primary{background:#dce9ff;color:#17263d;border-color:#dce9ff}
+@media(max-width:560px){
+ header{padding:25px 18px 16px}
+ main{padding:5px 18px 36px}
+ .toolbar{flex-wrap:wrap;gap:9px}
+ .search{order:2;margin:2px 0 0;width:100%;max-width:none}
+ .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .app{min-height:137px}
+}
+
+#viewer{position:fixed;inset:0;z-index:50;background:#fff;display:none;flex-direction:column}
+#viewer.active{display:flex}
+.viewer-bar{height:48px;flex:0 0 48px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#111a28;color:#edf2fa;border-bottom:1px solid #273448}
+#backToShelf{width:34px;height:34px;padding:0;border:0;border-radius:10px;background:#22334a;color:#edf2fa;font-size:20px}
+#viewerTitle{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+#reloadApp{width:34px;height:34px;padding:0;border:0;border-radius:10px;background:transparent;color:#c5d2e4;font-size:17px}
+#appFrame{width:100%;height:calc(100% - 48px);border:0;background:#fff;flex:1}
+body.app-open{overflow:hidden}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">▣</div><div><h1>HTML App Shelf</h1><p>A simple home for your HTML apps</p></div></div></header>
+<main>
+  <div class="toolbar">
+    <label class="file-label primary" for="files">＋ Add HTML files</label><input id="files" type="file" accept=".html,.htm,text/html" multiple>
+    <input class="search" id="search" type="search" placeholder="Search your apps…">
+  </div>
+  <div class="stats" id="stats">No apps saved yet</div>
+  <section class="grid" id="grid" aria-live="polite"></section>
+  <div class="note"><strong>Private storage:</strong> Your apps stay in this browser on this device. Nothing is uploaded. Avoid clearing browser data, and export important files as backups. Apps open full-screen inside the shelf. Use the back arrow to return.</div>
+</main>
+<section id="viewer" aria-label="HTML app viewer">
+  <div class="viewer-bar">
+    <button id="backToShelf" type="button" aria-label="Back to app shelf">‹</button>
+    <div id="viewerTitle">App</div>
+    <button id="reloadApp" type="button" aria-label="Reload app">↻</button>
+  </div>
+  <iframe id="appFrame" title="HTML app" sandbox="allow-scripts allow-forms allow-downloads allow-popups allow-modals"></iframe>
+</section>
+<dialog id="editDialog">
+  <form method="dialog" id="editForm">
+    <h2 id="dialogTitle">App details</h2>
+    <label for="appName">App name</label><input id="appName" type="text" maxlength="60" required>
+    <label for="appIcon">Icon (emoji or short text)</label><input id="appIcon" type="text" maxlength="8" placeholder="🌐">
+    <div class="actions"><button value="cancel">Cancel</button><button class="primary" id="saveEdit" value="save">Save</button></div>
+  </form>
+</dialog>
+<script>
+(()=>{
+'use strict';
+const KEY='html-app-shelf-v1';
+const $=s=>document.querySelector(s);
+let apps=[],editingId=null;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function load(){try{apps=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(apps))apps=[];}catch(e){apps=[];}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(apps));return true}catch(e){alert('Could not save. Browser local storage may be full. Remove a large app or use smaller HTML files.');return false}}
+function render(){
+ const q=$('#search').value.toLowerCase().trim(),shown=apps.filter(a=>a.name.toLowerCase().includes(q));
+ $('#stats').textContent=`${apps.length} app${apps.length===1?'':'s'} saved on this device`;
+ const grid=$('#grid');
+ if(!shown.length){grid.innerHTML=`<div class="empty"><strong>${apps.length?'No matching apps':'Your app shelf is empty'}</strong>${apps.length?'Try another search.':'Add your first HTML file to get started.'}</div>`;return}
+ grid.innerHTML=shown.map(a=>`<article class="app" data-open="${esc(a.id)}" tabindex="0" role="button" aria-label="Open ${esc(a.name)}"><button class="menu" data-menu="${esc(a.id)}" aria-label="App options">⋯</button><div class="app-icon">${a.icon&&a.icon.startsWith('data:image/')?`<img src="${a.icon}" alt="">`:esc(a.icon||'🌐')}</div><div class="app-name">${esc(a.name)}</div><div class="app-meta">${(a.html.length/1024).toFixed(1)} KB</div></article>`).join('');
+}
+let activeAppId=null;
+const ACTIVE_KEY='html-app-shelf-active-v1';
+function mountFreshAppFrame(html){
+ // Destroy the previous browsing context completely. This clears any
+ // in-app navigation history instead of refreshing inside the old frame.
+ const oldFrame=$('#appFrame');
+ const freshFrame=document.createElement('iframe');
+ freshFrame.id='appFrame';
+ freshFrame.title='HTML app';
+ freshFrame.setAttribute('sandbox','allow-scripts allow-forms allow-downloads allow-popups allow-modals');
+ freshFrame.style.cssText=oldFrame.style.cssText;
+ oldFrame.replaceWith(freshFrame);
+ freshFrame.srcdoc=html;
+}
+function showApp(id){
+ const a=apps.find(x=>x.id===id);if(!a)return showShelf();
+ activeAppId=id;
+ try{sessionStorage.setItem(ACTIVE_KEY,id)}catch(e){}
+ $('#viewerTitle').textContent=a.name;
+ mountFreshAppFrame(a.html);
+ $('#viewer').classList.add('active');
+ document.body.classList.add('app-open');
+ // A new iframe means a clean app session with no previous in-app history.
+}
+function showShelf(){
+ activeAppId=null;
+ try{sessionStorage.removeItem(ACTIVE_KEY)}catch(e){}
+ mountFreshAppFrame('');
+ $('#viewer').classList.remove('active');
+ document.body.classList.remove('app-open');
+ // Remove stale URL fragments left by earlier launcher versions.
+ if(location.hash.startsWith('#app=')){
+   history.replaceState(history.state,'',location.pathname+location.search);
+ }
+}
+function openApp(id){showApp(id)}
+function addFile(file){
+ if(!/\.html?$/i.test(file.name)&&file.type!=='text/html'){alert(file.name+' is not an HTML file.');return}
+ const reader=new FileReader();
+ reader.onload=()=>{const base=file.name.replace(/\.html?$/i,'')||'My HTML App';apps.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),name:base,icon:'🌐',html:String(reader.result),added:Date.now()});if(persist())render()};
+ reader.onerror=()=>alert('Could not read '+file.name);
+ reader.readAsText(file);
+}
+$('#files').addEventListener('change',e=>{[...e.target.files].forEach(addFile);e.target.value=''});
+$('#grid').addEventListener('click',e=>{
+ const menu=e.target.closest('[data-menu]');if(menu){e.stopPropagation();showMenu(menu.dataset.menu);return}
+ const card=e.target.closest('[data-open]');if(card)openApp(card.dataset.open);
+});
+$('#grid').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-open]')){e.preventDefault();openApp(e.target.dataset.open)}});
+function showMenu(id){
+ const a=apps.find(x=>x.id===id);if(!a)return;
+ const choice=prompt(`Options for "${a.name}"\n1. Rename / change icon\n2. Delete app\n3. Cancel`,'1');
+ if(choice==='1'){editingId=id;$('#appName').value=a.name;$('#appIcon').value=a.icon||'🌐';$('#dialogTitle').textContent='Edit app';$('#editDialog').showModal()}
+ else if(choice==='2'&&confirm(`Delete "${a.name}" from this device?`)){apps=apps.filter(x=>x.id!==id);persist();render()}
+}
+$('#editForm').addEventListener('submit',e=>{if(e.submitter?.value!=='save')return;e.preventDefault();const a=apps.find(x=>x.id===editingId);if(a){a.name=$('#appName').value.trim()||'Untitled app';a.icon=$('#appIcon').value.trim()||'🌐';persist();render()}$('#editDialog').close()});
+$('#search').addEventListener('input',render);
+$('#backToShelf').addEventListener('click',()=>showShelf());
+$('#reloadApp').addEventListener('click',()=>{if(activeAppId){const id=activeAppId;showShelf();showApp(id)}});
+// One guard entry lets Android/browser Back close the viewer in one press.
+// Reopening or refreshing apps never adds more entries.
+if(!history.state?.htmlAppShelfGuard){
+ history.pushState({htmlAppShelfGuard:true},'',location.href);
+}
+window.addEventListener('popstate',()=>{
+ if($('#viewer').classList.contains('active')){
+   showShelf();
+   history.pushState({htmlAppShelfGuard:true},'',location.href);
+ }
+});
+load();render();
+try{
+ const remembered=sessionStorage.getItem(ACTIVE_KEY);
+ if(remembered&&apps.some(a=>a.id===remembered))showApp(remembered);
+}catch(e){}
+})();
+</script>
+</body>
+</html>
