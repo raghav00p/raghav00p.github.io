@@ -49,7 +49,7 @@
       localStorage.setItem(KEY, source);
 
       // Verify that the saved value can be read back before launching.
-      const verified = localStorage.getItem(KEY);
+      const verified = localStorage.getItem();
       if (verified !== source) throw new Error("Storage verification failed");
 
       launch(verified);
