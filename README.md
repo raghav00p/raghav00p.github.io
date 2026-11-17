@@ -1,6 +1,8 @@
 # web tutorials
 ## [1. pwa](https://raghav00p.github.io)
 ## [2. flashcards](https://raghav00p.github.io/flashcards.html)
+## [2. inspector](https://raghav00p.github.io/inspector.html)
+
 
 ### Deploying the PWA 🚀
 This repository hosts a Progressive Web App at the root path. The app is installable from supported browsers when the manifest and service worker are correctly wired up in the page.
