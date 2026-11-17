@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IndexedDB & LocalStorage Inspector</title>
+<style>
+  :root{
+    --bg:#0B0F14;
+    --surface:#121821;
+    --surface-alt:#1A222D;
+    --border:#232C38;
+    --text:#E8EDF2;
+    --text-muted:#7C8A9A;
+    --accent:#4FD1C5;
+    --accent-dim:#2A5048;
+    --warn:#E8A33D;
+    --danger:#E2645A;
+    --danger-dim:#4A2A28;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  a{ color:var(--accent); }
+
+  .wrap{
+    max-width:980px;
+    margin:0 auto;
+    padding:32px 20px 80px;
+  }
+
+  /* ---------- Header ---------- */
+  .header{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  .title-block h1{
+    font-size:22px;
+    margin:0 0 4px;
+    letter-spacing:0.2px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .title-block h1 .dot{
+    width:9px; height:9px; border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 0 4px var(--accent-dim);
+    display:inline-block;
+  }
+  .title-block p{
+    margin:0;
+    color:var(--text-muted);
+    font-size:13px;
+    max-width:560px;
+    line-height:1.5;
+  }
+  .title-block code{
+    font-family:var(--mono);
+    background:var(--surface-alt);
+    padding:1px 5px;
+    border-radius:4px;
+    font-size:12px;
+    color:var(--accent);
+  }
+
+  .actions{ display:flex; gap:8px; flex-shrink:0; }
+  button{
+    font-family:var(--sans);
+    font-size:13px;
+    font-weight:600;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    padding:9px 14px;
+    cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  button:hover{ border-color:var(--accent); color:var(--accent); }
+  button:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  button.primary{ background:var(--accent); color:#06161A; border-color:var(--accent); }
+  button.primary:hover{ background:#3fc0b3; color:#06161A; }
+  button:disabled{ opacity:.5; cursor:default; }
+
+  /* ---------- Stat strip ---------- */
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:1px;
+    background:var(--border);
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+    margin-bottom:20px;
+  }
+  .stat{
+    background:var(--surface);
+    padding:14px 16px;
+  }
+  .stat .num{
+    font-family:var(--mono);
+    font-size:22px;
+    color:var(--accent);
+    line-height:1;
+  }
+  .stat .lbl{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-muted);
+    margin-top:4px;
+  }
+
+  /* ---------- Search ---------- */
+  .search-row{
+    margin-bottom:20px;
+  }
+  .search-row input{
+    width:100%;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:13px;
+    padding:10px 12px;
+    border-radius:8px;
+  }
+  .search-row input::placeholder{ color:var(--text-muted); }
+  .search-row input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  /* ---------- States ---------- */
+  .state-card{
+    border:1px dashed var(--border);
+    border-radius:10px;
+    padding:28px 20px;
+    text-align:center;
+    color:var(--text-muted);
+    font-size:13px;
+  }
+  .state-card.scanning .dots::after{
+    content:'';
+    display:inline-block;
+    animation: dots 1.2s steps(4,end) infinite;
+  }
+  @keyframes dots{
+    0%{content:''} 25%{content:'.'} 50%{content:'..'} 75%{content:'...'}
+  }
+
+  /* ---------- Icon / destructive buttons ---------- */
+  .icon-btn{
+    font-family:var(--mono);
+    font-size:11px;
+    font-weight:600;
+    padding:4px 9px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:transparent;
+    color:var(--text-muted);
+    cursor:pointer;
+    flex-shrink:0;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .icon-btn:hover{ border-color:var(--danger); color:var(--danger); background:rgba(226,101,90,0.08); }
+  .icon-btn:focus-visible{ outline:2px solid var(--danger); outline-offset:1px; }
+
+  /* ---------- DB cards ---------- */
+  .db-card{
+    border:1px solid var(--border);
+    border-radius:10px;
+    margin-bottom:12px;
+    background:var(--surface);
+    overflow:hidden;
+  }
+  .db-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 16px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .db-head:hover{ background:var(--surface-alt); }
+  .db-head .left{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .chevron{
+    flex-shrink:0;
+    width:9px; height:9px;
+    border-right:2px solid var(--text-muted);
+    border-bottom:2px solid var(--text-muted);
+    transform:rotate(-45deg);
+    transition:transform .15s;
+  }
+  .db-card.open .chevron{ transform:rotate(45deg); }
+  .db-name{
+    font-family:var(--mono);
+    font-size:14px;
+    font-weight:600;
+    color:var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .badge{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--text-muted);
+    background:var(--surface-alt);
+    border:1px solid var(--border);
+    border-radius:5px;
+    padding:2px 7px;
+    flex-shrink:0;
+  }
+  .badge.accent{ color:var(--accent); border-color:var(--accent-dim); }
+  .badge.danger{ color:var(--danger); border-color:var(--danger-dim); }
+  .db-meta{ display:flex; gap:6px; align-items:center; flex-shrink:0; }
+
+  .db-body{ display:none; border-top:1px solid var(--border); }
+  .db-card.open .db-body{ display:block; }
+
+  .db-error{
+    padding:14px 16px;
+    color:var(--danger);
+    font-size:13px;
+    font-family:var(--mono);
+  }
+
+  .store{
+    border-top:1px solid var(--border);
+  }
+  .store:first-child{ border-top:none; }
+  .store-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:11px 16px 11px 32px;
+    cursor:pointer;
+    user-select:none;
+    background:var(--bg);
+  }
+  .store-head:hover{ background:#0E1117; }
+  .store-name{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--text);
+  }
+  .store-name .label{ color:var(--text-muted); font-size:11px; margin-left:4px; }
+  .store-meta{ display:flex; gap:6px; align-items:center; flex-shrink:0; }
+
+  .store-body{ display:none; }
+  .store.open .store-body{ display:block; }
+  .store.open .chevron-s{ transform:rotate(45deg); }
+  .chevron-s{
+    flex-shrink:0;
+    width:7px; height:7px;
+    border-right:2px solid var(--text-muted);
+    border-bottom:2px solid var(--text-muted);
+    transform:rotate(-45deg);
+    transition:transform .15s;
+  }
+
+  table.records{
+    width:100%;
+    border-collapse:collapse;
+    font-family:var(--mono);
+    font-size:12.5px;
+  }
+  table.records thead th{
+    text-align:left;
+    color:var(--text-muted);
+    font-weight:600;
+    text-transform:uppercase;
+    font-size:10.5px;
+    letter-spacing:0.05em;
+    padding:8px 16px;
+    border-bottom:1px solid var(--border);
+    background:var(--surface-alt);
+  }
+  table.records thead th.key-col{ width:180px; }
+  table.records thead th.actions-col{ width:80px; text-align:right; }
+  table.records tbody td{
+    padding:9px 16px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+    color:var(--text);
+  }
+  table.records tbody td.actions-col{ text-align:right; vertical-align:middle; }
+  table.records tbody tr:last-child td{ border-bottom:none; }
+  table.records tbody tr:hover{ background:rgba(79,209,197,0.04); }
+  .key-cell{ color:var(--accent); white-space:nowrap; }
+  .val-cell{
+    white-space:pre-wrap;
+    word-break:break-word;
+    max-height:140px;
+    overflow:hidden;
+    position:relative;
+  }
+  .val-cell.collapsed::after{
+    content:'';
+    position:absolute;
+    bottom:0; left:0; right:0;
+    height:32px;
+    background:linear-gradient(transparent, var(--surface));
+  }
+  .expand-link{
+    display:inline-block;
+    margin-top:6px;
+    font-size:11px;
+    color:var(--accent);
+    cursor:pointer;
+    font-family:var(--sans);
+    font-weight:600;
+  }
+  .empty-row td{
+    color:var(--text-muted);
+    font-style:normal;
+    padding:14px 32px;
+  }
+
+  .hidden-by-filter{ display:none !important; }
+
+  footer{
+    margin-top:28px;
+    color:var(--text-muted);
+    font-size:12px;
+    line-height:1.6;
+    border-top:1px solid var(--border);
+    padding-top:16px;
+  }
+
+  @media (max-width:640px){
+    .stats{ grid-template-columns:repeat(2,1fr); }
+    table.records thead th.key-col{ width:100px; }
+    .db-name, .store-name{ font-size:12.5px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important; }
+  }
+
+  /* ---------- LocalStorage section ---------- */
+  .section-heading{
+    margin:40px 0 18px;
+    padding-top:26px;
+    border-top:1px solid var(--border);
+  }
+  .section-heading h2{
+    font-size:19px;
+    margin:0 0 4px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .section-heading h2 .dot{
+    width:9px; height:9px; border-radius:50%;
+    background:var(--warn);
+    box-shadow:0 0 0 4px rgba(232,163,61,0.18);
+    display:inline-block;
+  }
+  .section-heading p{
+    margin:0;
+    color:var(--text-muted);
+    font-size:13px;
+    max-width:600px;
+    line-height:1.5;
+  }
+  .section-heading code{
+    font-family:var(--mono);
+    background:var(--surface-alt);
+    padding:1px 5px;
+    border-radius:4px;
+    font-size:12px;
+    color:var(--accent);
+  }
+
+  .ls-toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:18px;
+  }
+  .ls-add-row{
+    display:none !important;
+  }
+  .toggle-ls-btn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:9px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+    font-size:13px;
+    transition:all .15s;
+  }
+  .toggle-ls-btn:hover{
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  .toggle-ls-btn .toggle-icon{
+    display:inline-block;
+    width:10px;
+    height:10px;
+    transition:transform .2s;
+  }
+  .toggle-ls-btn.collapsed .toggle-icon{
+    transform:rotate(-90deg);
+  }
+  .ls-content{
+    transition:max-height .3s ease-out, opacity .3s;
+    overflow:hidden;
+    max-height:10000px;
+    opacity:1;
+  }
+  .ls-content.collapsed{
+    max-height:0;
+    opacity:0;
+  }
+  .ls-add-row input{
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:13px;
+    padding:9px 10px;
+    border-radius:8px;
+    min-width:0;
+  }
+  .ls-add-row input#lsNewKey{ flex:0 0 160px; }
+  .ls-add-row input#lsNewValue{ flex:1; }
+  .ls-add-row input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  .ls-toolbar .actions{ flex-shrink:0; }
+
+  .ls-val-input{
+    width:100%;
+    min-height:34px;
+    max-height:220px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:12.5px;
+    line-height:1.45;
+    padding:7px 9px;
+    border-radius:6px;
+    resize:vertical;
+  }
+  .ls-val-input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .ls-row-actions{ display:flex; gap:6px; justify-content:flex-end; }
+
+  @media (max-width:640px){
+    .ls-add-row{ flex-wrap:wrap; }
+    .ls-add-row input#lsNewKey{ flex:1 1 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="title-block">
+      <h1><span class="dot"></span>IndexedDB Inspector</h1>
+      <p>Scans every database, object store, and record stored in IndexedDB for <code id="originLabel">this page's origin</code>. Browsers isolate storage per origin, so this only shows data saved by pages served from the same address as this file. You can also delete individual records, clear a whole store, or delete an entire database — all of that is permanent. A <code>localStorage</code> manager is further down the page.</p>
+    </div>
+    <div class="actions">
+      <button id="exportBtn" disabled>Export JSON</button>
+      <button id="refreshBtn" class="primary">Scan</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats" style="display:none;">
+    <div class="stat"><div class="num" id="statDbs">0</div><div class="lbl">Databases</div></div>
+    <div class="stat"><div class="num" id="statStores">0</div><div class="lbl">Object stores</div></div>
+    <div class="stat"><div class="num" id="statRecords">0</div><div class="lbl">Records</div></div>
+    <div class="stat"><div class="num" id="statErrors">0</div><div class="lbl">Errors</div></div>
+  </div>
+
+  <div class="search-row" id="searchRow" style="display:none;">
+    <input type="text" id="filterInput" placeholder="Filter by database, store, key, or value…">
+  </div>
+
+  <div id="results">
+    <div class="state-card" id="initialState">Click "Scan" to read IndexedDB on this page.</div>
+  </div>
+
+  <div class="section-heading" style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <div>
+      <h2><span class="dot"></span>Local Storage Manager</h2>
+      <p>View and edit entries in <code>localStorage</code> for <code id="lsOriginLabel">this page's origin</code>. Changes are saved immediately and are permanent.</p>
+    </div>
+    <button id="toggleLsBtn" class="toggle-ls-btn" title="Toggle localStorage panel">
+      <span>Show</span>
+      <span class="toggle-icon">▼</span>
+    </button>
+  </div>
+
+  <div class="ls-content" id="lsContent">
+    <div class="ls-toolbar">
+      <div class="ls-add-row">
+        <input type="text" id="lsNewKey" placeholder="key">
+        <input type="text" id="lsNewValue" placeholder="value">
+        <button id="lsAddBtn" class="primary">Add / Update</button>
+      </div>
+      <div class="actions">
+        <button id="lsExportBtn" disabled>Export JSON</button>
+        <button id="lsClearAllBtn">Clear All</button>
+        <button id="lsRefreshBtn" class="primary">Scan</button>
+      </div>
+    </div>
+
+    <div class="stats" id="lsStats" style="display:none; grid-template-columns:repeat(2,1fr);">
+      <div class="stat"><div class="num" id="lsStatKeys">0</div><div class="lbl">Keys</div></div>
+      <div class="stat"><div class="num" id="lsStatSize">0 B</div><div class="lbl">Approx. size</div></div>
+    </div>
+
+    <div class="search-row" id="lsSearchRow" style="display:none;">
+      <input type="text" id="lsFilterInput" placeholder="Filter by key or value…">
+    </div>
+
+    <div id="lsResults">
+      <div class="state-card" id="lsInitialState">Click "Scan" to read localStorage on this page.</div>
+    </div>
+  </div>
+
+  <footer>
+    Generated locally in your browser — no data leaves this page. If you're trying to inspect a website's storage, open this file in a context running on that same origin (or just use your browser's DevTools → Application/Storage tab, which can already do this for any open tab, including deletion).
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const resultsEl = document.getElementById('results');
+  const statsEl = document.getElementById('stats');
+  const searchRowEl = document.getElementById('searchRow');
+  const refreshBtn = document.getElementById('refreshBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const filterInput = document.getElementById('filterInput');
+  const originLabel = document.getElementById('originLabel');
+
+  let lastScan = null;       // holds the structured data for export
+  let currentDbResults = []; // the live array backing the current render, used by delete actions
+  let expandedDbs = new Set();    // db names the user has expanded (persists across rescans)
+  let expandedStores = new Set(); // "dbName::storeName" keys the user has expanded
+  let hasAutoOpened = false;
+
+  try {
+    originLabel.textContent = location.origin && location.origin !== 'null' ? location.origin : '(local file)';
+  } catch(e){}
+
+  function reqToPromise(req){
+    return new Promise((resolve, reject) => {
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[c]));
+  }
+
+  function stringifyVal(v){
+    try {
+      if (v === undefined) return 'undefined';
+      return JSON.stringify(v, (k, val) => {
+        if (val instanceof ArrayBuffer) return `ArrayBuffer(${val.byteLength} bytes)`;
+        if (val && val.buffer instanceof ArrayBuffer) return `${val.constructor.name}(${val.length})`;
+        return val;
+      }, 2);
+    } catch(e){
+      try { return String(v); } catch(e2){ return '(unserializable value)'; }
+    }
+  }
+
+  function stringifyKey(k){
+    if (k instanceof Date) return k.toISOString();
+    if (Array.isArray(k)) return JSON.stringify(k);
+    return String(k);
+  }
+
+  async function readStore(db, storeName){
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const [keys, values] = await Promise.all([
+      reqToPromise(store.getAllKeys()),
+      reqToPromise(store.getAll())
+    ]);
+    const records = keys.map((k, i) => ({ key: k, value: values[i] }));
+    return {
+      name: storeName,
+      keyPath: store.keyPath,
+      autoIncrement: store.autoIncrement,
+      indexNames: Array.from(store.indexNames),
+      count: records.length,
+      records
+    };
+  }
+
+  async function scan(){
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = 'Scanning…';
+    exportBtn.disabled = true;
+    resultsEl.innerHTML = '<div class="state-card scanning">Reading databases<span class="dots"></span></div>';
+    statsEl.style.display = 'none';
+    searchRowEl.style.display = 'none';
+
+    if (!('indexedDB' in window)){
+      resultsEl.innerHTML = '<div class="state-card">IndexedDB is not available in this browser context.</div>';
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = 'Scan';
+      return;
+    }
+
+    let dbList = [];
+    if (typeof indexedDB.databases === 'function'){
+      try {
+        dbList = await indexedDB.databases();
+      } catch(e){
+        dbList = [];
+      }
+    } else {
+      resultsEl.innerHTML = `<div class="state-card">
+        This browser doesn't support <code>indexedDB.databases()</code>, so the list of database names can't be enumerated automatically.<br><br>
+        Try this tool in a recent Chrome, Edge, or Firefox build, or open DevTools → Application → IndexedDB on the page you care about.
+      </div>`;
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = 'Scan';
+      return;
+    }
+
+    if (!dbList || dbList.length === 0){
+      resultsEl.innerHTML = '<div class="state-card">No IndexedDB databases found for this origin.</div>';
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = 'Scan';
+      lastScan = { origin: originLabel.textContent, scannedAt: new Date().toISOString(), databases: [] };
+      currentDbResults = [];
+      return;
+    }
+
+    const dbResults = [];
+    for (const info of dbList){
+      const name = info.name;
+      const entry = { name, version: info.version, stores: [], error: null };
+      try {
+        const db = await reqToPromise(indexedDB.open(name));
+        const storeNames = Array.from(db.objectStoreNames);
+        for (const sName of storeNames){
+          try {
+            entry.stores.push(await readStore(db, sName));
+          } catch(storeErr){
+            entry.stores.push({ name: sName, error: storeErr.message || String(storeErr) });
+          }
+        }
+        db.close();
+      } catch(dbErr){
+        entry.error = dbErr.message || String(dbErr);
+      }
+      dbResults.push(entry);
+    }
+
+    lastScan = { origin: originLabel.textContent, scannedAt: new Date().toISOString(), databases: dbResults };
+    render(dbResults);
+    applyFilter();
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = 'Scan';
+    exportBtn.disabled = false;
+  }
+
+  function render(dbResults){
+    currentDbResults = dbResults;
+
+    if (!hasAutoOpened && dbResults.length > 0){
+      expandedDbs.add(dbResults[0].name);
+      hasAutoOpened = true;
+    }
+
+    let totalStores = 0, totalRecords = 0, totalErrors = 0;
+
+    const html = dbResults.map((db, di) => {
+      if (db.error) totalErrors++;
+      totalStores += db.stores.length;
+      const dbRecordCount = db.stores.reduce((a,s) => a + (s.count || 0), 0);
+      totalRecords += dbRecordCount;
+      const dbOpenClass = expandedDbs.has(db.name) ? ' open' : '';
+
+      const storesHtml = db.error ? '' : db.stores.map((s, si) => {
+        const storeTrackKey = db.name + '::' + s.name;
+        const storeOpenClass = expandedStores.has(storeTrackKey) ? ' open' : '';
+
+        if (s.error){
+          totalErrors++;
+          return `<div class="store${storeOpenClass}" data-db="${di}" data-store="${si}">
+            <div class="store-head" onclick="toggleStoreTrack(${di}, ${si}, this)">
+              <div class="store-meta"><span class="chevron-s"></span><span class="store-name">${escapeHtml(s.name)}</span></div>
+              <span class="badge danger">error</span>
+            </div>
+            <div class="store-body"><div class="db-error">${escapeHtml(s.error)}</div></div>
+          </div>`;
+        }
+
+        const keyPathLabel = s.keyPath ? (Array.isArray(s.keyPath) ? s.keyPath.join(', ') : s.keyPath) : '(none)';
+        const rowsHtml = s.records.length === 0
+          ? `<tr class="empty-row"><td colspan="3">No records in this object store.</td></tr>`
+          : s.records.map((r, ri) => {
+              const valStr = stringifyVal(r.value);
+              const isLong = valStr.length > 320;
+              const cellId = `v-${di}-${si}-${ri}`;
+              return `<tr data-search="${escapeHtml((stringifyKey(r.key) + ' ' + valStr).toLowerCase())}">
+                <td class="key-cell">${escapeHtml(stringifyKey(r.key))}</td>
+                <td>
+                  <div class="val-cell${isLong ? ' collapsed' : ''}" id="${cellId}">${escapeHtml(valStr)}</div>
+                  ${isLong ? `<span class="expand-link" onclick="document.getElementById('${cellId}').classList.toggle('collapsed'); this.textContent = document.getElementById('${cellId}').classList.contains('collapsed') ? 'Show full value' : 'Show less';">Show full value</span>` : ''}
+                </td>
+                <td class="actions-col"><button class="icon-btn" onclick="deleteRecord(${di}, ${si}, ${ri})" title="Delete this record">Delete</button></td>
+              </tr>`;
+            }).join('');
+
+        return `<div class="store${storeOpenClass}" data-db="${di}" data-store="${si}">
+          <div class="store-head" onclick="toggleStoreTrack(${di}, ${si}, this)">
+            <div class="store-meta"><span class="chevron-s"></span><span class="store-name">${escapeHtml(s.name)}<span class="label">keyPath: ${escapeHtml(keyPathLabel)}${s.autoIncrement ? ' · autoIncrement' : ''}</span></span></div>
+            <div class="store-meta">
+              <span class="badge accent">${s.count} record${s.count === 1 ? '' : 's'}</span>
+              <button class="icon-btn" onclick="event.stopPropagation(); clearStore(${di}, ${si})" title="Delete all records in this store">Clear</button>
+            </div>
+          </div>
+          <div class="store-body">
+            <table class="records">
+              <thead><tr><th class="key-col">Key</th><th>Value</th><th class="actions-col">Actions</th></tr></thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+        </div>`;
+      }).join('');
+
+      const bodyHtml = db.error
+        ? `<div class="db-error">Failed to open database: ${escapeHtml(db.error)}</div>`
+        : (db.stores.length === 0
+            ? `<div class="db-error" style="color:var(--text-muted);">No object stores in this database.</div>`
+            : storesHtml);
+
+      return `<div class="db-card${dbOpenClass}" data-db="${di}">
+        <div class="db-head" onclick="toggleDbTrack(${di}, this)">
+          <div class="left"><span class="chevron"></span><span class="db-name">${escapeHtml(db.name)}</span></div>
+          <div class="db-meta">
+            <span class="badge">v${db.version}</span>
+            ${db.error ? `<span class="badge danger">error</span>` : `<span class="badge">${db.stores.length} store${db.stores.length===1?'':'s'}</span><span class="badge accent">${dbRecordCount} record${dbRecordCount===1?'':'s'}</span>`}
+            <button class="icon-btn" onclick="event.stopPropagation(); deleteDb(${di})" title="Delete this entire database">Delete DB</button>
+          </div>
+        </div>
+        <div class="db-body">${bodyHtml}</div>
+      </div>`;
+    }).join('');
+
+    resultsEl.innerHTML = html || '<div class="state-card">No IndexedDB databases found for this origin.</div>';
+
+    document.getElementById('statDbs').textContent = dbResults.length;
+    document.getElementById('statStores').textContent = totalStores;
+    document.getElementById('statRecords').textContent = totalRecords;
+    document.getElementById('statErrors').textContent = totalErrors;
+    statsEl.style.display = 'grid';
+    searchRowEl.style.display = 'block';
+  }
+
+  // Toggle helpers — keep expand/collapse state in sync with name-keyed sets so it
+  // survives a rescan triggered by a delete action.
+  function toggleDbTrack(di, el){
+    const card = el.closest('.db-card');
+    card.classList.toggle('open');
+    const name = currentDbResults[di] && currentDbResults[di].name;
+    if (!name) return;
+    if (card.classList.contains('open')) expandedDbs.add(name);
+    else expandedDbs.delete(name);
+  }
+
+  function toggleStoreTrack(di, si, el){
+    const storeEl = el.closest('.store');
+    storeEl.classList.toggle('open');
+    const entry = currentDbResults[di];
+    const s = entry && entry.stores[si];
+    if (!entry || !s) return;
+    const key = entry.name + '::' + s.name;
+    if (storeEl.classList.contains('open')) expandedStores.add(key);
+    else expandedStores.delete(key);
+  }
+
+  // ---------- Delete actions ----------
+  async function deleteDb(di){
+    const entry = currentDbResults[di];
+    if (!entry) return;
+    const recordTotal = entry.stores.reduce((a,s) => a + (s.count || 0), 0);
+    const ok = confirm(`Delete the entire database "${entry.name}"?\n\nThis permanently removes ${entry.stores.length} object store(s) and ${recordTotal} record(s). This cannot be undone.`);
+    if (!ok) return;
+    try {
+      await new Promise((resolve, reject) => {
+        const req = indexedDB.deleteDatabase(entry.name);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error('Delete blocked — another tab or open connection is using this database. Close other tabs using it and try again.'));
+      });
+      expandedDbs.delete(entry.name);
+      await scan();
+    } catch(err){
+      alert('Failed to delete database: ' + (err && err.message ? err.message : err));
+    }
+  }
+
+  async function clearStore(di, si){
+    const entry = currentDbResults[di];
+    const storeEntry = entry && entry.stores[si];
+    if (!storeEntry || storeEntry.error) return;
+    const ok = confirm(`Clear all ${storeEntry.count} record(s) from "${storeEntry.name}"?\n\nThis cannot be undone.`);
+    if (!ok) return;
+    try {
+      const db = await reqToPromise(indexedDB.open(entry.name));
+      const tx = db.transaction(storeEntry.name, 'readwrite');
+      await reqToPromise(tx.objectStore(storeEntry.name).clear());
+      db.close();
+      await scan();
+    } catch(err){
+      alert('Failed to clear store: ' + (err && err.message ? err.message : err));
+    }
+  }
+
+  async function deleteRecord(di, si, ri){
+    const entry = currentDbResults[di];
+    const storeEntry = entry && entry.stores[si];
+    const record = storeEntry && storeEntry.records && storeEntry.records[ri];
+    if (!record) return;
+    const ok = confirm(`Delete this record (key: ${stringifyKey(record.key)}) from "${storeEntry.name}"?`);
+    if (!ok) return;
+    try {
+      const db = await reqToPromise(indexedDB.open(entry.name));
+      const tx = db.transaction(storeEntry.name, 'readwrite');
+      await reqToPromise(tx.objectStore(storeEntry.name).delete(record.key));
+      db.close();
+      await scan();
+    } catch(err){
+      alert('Failed to delete record: ' + (err && err.message ? err.message : err));
+    }
+  }
+
+  // expose for inline onclick handlers
+  window.toggleDbTrack = toggleDbTrack;
+  window.toggleStoreTrack = toggleStoreTrack;
+  window.deleteDb = deleteDb;
+  window.clearStore = clearStore;
+  window.deleteRecord = deleteRecord;
+
+  function applyFilter(){
+    const q = filterInput.value.trim().toLowerCase();
+    document.querySelectorAll('.db-card').forEach(dbCard => {
+      const dbName = dbCard.querySelector('.db-name').textContent.toLowerCase();
+      let dbHasMatch = q === '' || dbName.includes(q);
+      let anyStoreVisible = false;
+
+      dbCard.querySelectorAll('.store').forEach(storeEl => {
+        const storeName = storeEl.querySelector('.store-name').textContent.toLowerCase();
+        let storeMatches = q === '' || dbName.includes(q) || storeName.includes(q);
+        let anyRowVisible = false;
+
+        storeEl.querySelectorAll('tbody tr[data-search]').forEach(row => {
+          const hay = row.getAttribute('data-search');
+          const match = q === '' || storeMatches || hay.includes(q);
+          row.classList.toggle('hidden-by-filter', !match);
+          if (match) anyRowVisible = true;
+        });
+
+        const storeVisible = q === '' || storeMatches || anyRowVisible;
+        storeEl.classList.toggle('hidden-by-filter', !storeVisible);
+        if (storeVisible){
+          anyStoreVisible = true;
+          if (q !== '' && anyRowVisible && !storeMatches) storeEl.classList.add('open');
+        }
+      });
+
+      const dbVisible = q === '' || dbHasMatch || anyStoreVisible;
+      dbCard.classList.toggle('hidden-by-filter', !dbVisible);
+      if (q !== '' && dbVisible && anyStoreVisible) dbCard.classList.add('open');
+    });
+  }
+
+  filterInput.addEventListener('input', applyFilter);
+
+  exportBtn.addEventListener('click', () => {
+    if (!lastScan) return;
+    const blob = new Blob([JSON.stringify(lastScan, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `indexeddb-export-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  refreshBtn.addEventListener('click', scan);
+})();
+
+// ---------- Local Storage Manager ----------
+(function(){
+  const lsResultsEl = document.getElementById('lsResults');
+  const lsStatsEl = document.getElementById('lsStats');
+  const lsSearchRowEl = document.getElementById('lsSearchRow');
+  const lsRefreshBtn = document.getElementById('lsRefreshBtn');
+  const lsExportBtn = document.getElementById('lsExportBtn');
+  const lsClearAllBtn = document.getElementById('lsClearAllBtn');
+  const lsFilterInput = document.getElementById('lsFilterInput');
+  const lsNewKey = document.getElementById('lsNewKey');
+  const lsNewValue = document.getElementById('lsNewValue');
+  const lsAddBtn = document.getElementById('lsAddBtn');
+  const lsOriginLabel = document.getElementById('lsOriginLabel');
+  const toggleLsBtn = document.getElementById('toggleLsBtn');
+  const lsContent = document.getElementById('lsContent');
+
+  let lsLastScan = null;
+  let lsEntries = []; // [{ key, value }]
+  let lsIsCollapsed = true; // Start collapsed for clean UI
+
+  try {
+    lsOriginLabel.textContent = location.origin && location.origin !== 'null' ? location.origin : '(local file)';
+  } catch(e){}
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[c]));
+  }
+
+  function approxBytes(entries){
+    // UTF-16 code units, 2 bytes each — a close approximation of what browsers count
+    // against the localStorage quota.
+    let n = 0;
+    entries.forEach(e => { n += (e.key.length + e.value.length) * 2; });
+    return n;
+  }
+
+  function formatBytes(n){
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function scanLs(){
+    if (!('localStorage' in window)){
+      lsResultsEl.innerHTML = '<div class="state-card">localStorage is not available in this browser context.</div>';
+      lsStatsEl.style.display = 'none';
+      lsSearchRowEl.style.display = 'none';
+      lsExportBtn.disabled = true;
+      return;
+    }
+
+    const entries = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++){
+        const key = localStorage.key(i);
+        let value;
+        try { value = localStorage.getItem(key); } catch(e){ value = '(unreadable)'; }
+        entries.push({ key, value });
+      }
+    } catch(err){
+      lsResultsEl.innerHTML = '<div class="state-card">Failed to read localStorage: ' + escapeHtml(err.message || String(err)) + '</div>';
+      lsStatsEl.style.display = 'none';
+      lsSearchRowEl.style.display = 'none';
+      lsExportBtn.disabled = true;
+      return;
+    }
+
+    entries.sort((a, b) => a.key.localeCompare(b.key));
+    lsEntries = entries;
+    lsLastScan = { origin: lsOriginLabel.textContent, scannedAt: new Date().toISOString(), entries };
+    renderLs();
+    applyLsFilter();
+    lsExportBtn.disabled = entries.length === 0;
+  }
+
+  function renderLs(){
+    if (lsEntries.length === 0){
+      lsResultsEl.innerHTML = '<div class="state-card">No items in localStorage for this origin.</div>';
+      lsStatsEl.style.display = 'none';
+      lsSearchRowEl.style.display = 'none';
+      return;
+    }
+
+    const rowsHtml = lsEntries.map((e, i) => {
+      const valId = `ls-v-${i}`;
+      return `<tr data-search="${escapeHtml((e.key + ' ' + e.value).toLowerCase())}">
+        <td class="key-cell">${escapeHtml(e.key)}</td>
+        <td><textarea class="ls-val-input" id="${valId}" rows="1" spellcheck="false"></textarea></td>
+        <td class="actions-col">
+          <div class="ls-row-actions">
+            <button class="icon-btn" onclick="window.lsSaveEntry(${i})" title="Save changes to this value">Save</button>
+            <button class="icon-btn" onclick="window.lsDeleteEntry(${i})" title="Delete this key">Delete</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    lsResultsEl.innerHTML = `<div class="db-card open"><div class="db-body" style="display:block;"><div class="store open"><div class="store-body" style="display:block;">
+      <table class="records">
+        <thead><tr><th class="key-col">Key</th><th>Value</th><th class="actions-col" style="width:132px;">Actions</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div></div></div></div>`;
+
+    // Set textarea values via .value (not innerHTML) so special characters and
+    // newlines survive intact without needing extra escaping.
+    lsEntries.forEach((e, i) => {
+      const el = document.getElementById(`ls-v-${i}`);
+      if (el) el.value = e.value;
+    });
+
+    document.getElementById('lsStatKeys').textContent = lsEntries.length;
+    document.getElementById('lsStatSize').textContent = formatBytes(approxBytes(lsEntries));
+    lsStatsEl.style.display = 'grid';
+    lsSearchRowEl.style.display = 'block';
+  }
+
+  function lsSaveEntry(i){
+    const entry = lsEntries[i];
+    if (!entry) return;
+    const el = document.getElementById(`ls-v-${i}`);
+    if (!el) return;
+    try {
+      localStorage.setItem(entry.key, el.value);
+      entry.value = el.value;
+    } catch(err){
+      alert('Failed to save "' + entry.key + '": ' + (err && err.message ? err.message : err));
+    }
+  }
+
+  function lsDeleteEntry(i){
+    const entry = lsEntries[i];
+    if (!entry) return;
+    const ok = confirm(`Delete key "${entry.key}" from localStorage?\n\nThis cannot be undone.`);
+    if (!ok) return;
+    try {
+      localStorage.removeItem(entry.key);
+      scanLs();
+    } catch(err){
+      alert('Failed to delete "' + entry.key + '": ' + (err && err.message ? err.message : err));
+    }
+  }
+
+  function lsAddOrUpdate(){
+    const key = lsNewKey.value;
+    if (!key){ alert('Enter a key.'); lsNewKey.focus(); return; }
+    const value = lsNewValue.value;
+    try {
+      localStorage.setItem(key, value);
+      lsNewKey.value = '';
+      lsNewValue.value = '';
+      scanLs();
+    } catch(err){
+      alert('Failed to set item: ' + (err && err.message ? err.message : err));
+    }
+  }
+
+  function lsClearAll(){
+    if (lsEntries.length === 0) return;
+    const ok = confirm(`Delete all ${lsEntries.length} item(s) from localStorage for this origin?\n\nThis cannot be undone.`);
+    if (!ok) return;
+    try {
+      localStorage.clear();
+      scanLs();
+    } catch(err){
+      alert('Failed to clear localStorage: ' + (err && err.message ? err.message : err));
+    }
+  }
+
+  function applyLsFilter(){
+    const q = lsFilterInput.value.trim().toLowerCase();
+    document.querySelectorAll('#lsResults tbody tr[data-search]').forEach(row => {
+      const hay = row.getAttribute('data-search');
+      row.classList.toggle('hidden-by-filter', !(q === '' || hay.includes(q)));
+    });
+  }
+
+  // Toggle localStorage section visibility
+  function toggleLsPanel(){
+    lsIsCollapsed = !lsIsCollapsed;
+    lsContent.classList.toggle('collapsed', lsIsCollapsed);
+    toggleLsBtn.classList.toggle('collapsed', lsIsCollapsed);
+    
+    const text = toggleLsBtn.querySelector('span:first-child');
+    text.textContent = lsIsCollapsed ? 'Show' : 'Hide';
+    
+    // Auto-scan when opening if not already scanned
+    if (!lsIsCollapsed && lsEntries.length === 0){
+      scanLs();
+    }
+  }
+
+  // expose for inline onclick handlers
+  window.lsSaveEntry = lsSaveEntry;
+  window.lsDeleteEntry = lsDeleteEntry;
+
+  // Initialize collapsed state
+  lsContent.classList.add('collapsed');
+  toggleLsBtn.addEventListener('click', toggleLsPanel);
+
+  lsFilterInput.addEventListener('input', applyLsFilter);
+  lsAddBtn.addEventListener('click', lsAddOrUpdate);
+  lsNewValue.addEventListener('keydown', (e) => { if (e.key === 'Enter') lsAddOrUpdate(); });
+  lsClearAllBtn.addEventListener('click', lsClearAll);
+  lsRefreshBtn.addEventListener('click', scanLs);
+
+  lsExportBtn.addEventListener('click', () => {
+    if (!lsLastScan) return;
+    const blob = new Blob([JSON.stringify(lsLastScan, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `localstorage-export-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
+</body>
+</html>
