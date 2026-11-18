@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Permanent HTML Host</title>
+<style>
+  html,body{margin:0;width:100%;height:100%;overflow:hidden}
+  #picker{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #viewer{display:none;position:fixed;inset:0;width:100%;height:100%;border:0}
+</style>
+</head>
+<body>
+<div id="picker">
+  <input id="file" type="file" accept=".html,.htm,text/html" aria-label="Choose your HTML application">
+</div>
+<iframe id="viewer" title="Your application" allow="fullscreen"></iframe>
+<script>
+(() => {
+  const KEY = "permanent-html-host2nd-v2";
+  const picker = document.getElementById("picker");
+  const fileInput = document.getElementById("file");
+  const viewer = document.getElementById("viewer");
+
+  function launch(source) {
+    picker.remove();
+    viewer.style.display = "block";
+    viewer.srcdoc = source;
+  }
+
+  // Returning visits: load the one-time saved application automatically.
+  try {
+    const savedSource = localStorage.getItem(KEY);
+    if (savedSource !== null) {
+      launch(savedSource);
+      return;
+    }
+  } catch (error) {
+    // Keep the first-run picker visible if storage is unavailable.
+  }
+
+  // First launch only: select and permanently save one HTML application.
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    try {
+      const source = await file.text();
+      localStorage.setItem(KEY, source);
+
+      // Verify that the saved value can be read back before launching.
+      const verified = localStorage.getItem(KEY);
+      if (verified !== source) throw new Error("Storage verification failed");
+
+      launch(verified);
+    } catch (error) {
+      alert("Could not save this HTML file. Browser storage may be unavailable or full. Keep this page open and try a smaller file.");
+    }
+  });
+})();
+</script>
+</body>
+</html>
