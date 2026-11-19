@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#10131b">
+<title>Workers AI Chat</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1017;--panel:#151a24;--line:#283142;--text:#eef2f8;--muted:#9aa6b8;--accent:#f48120}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100dvh}
+header{padding:16px max(16px,env(safe-area-inset-right)) 12px max(16px,env(safe-area-inset-left));border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+h1{font-size:18px;margin:0}.sub{color:var(--muted);font-size:12px;margin-top:3px}
+main{max-width:900px;margin:auto;height:calc(100dvh - 65px);display:flex;flex-direction:column;padding:12px}
+.settings{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+.settings summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:600}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}
+input,select,textarea{width:100%;background:#0d121b;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:11px;font:inherit;min-width:0}
+input:focus,select:focus,textarea:focus{outline:1px solid var(--accent);border-color:var(--accent)}
+.wide{grid-column:1/-1}.hint{font-size:11px;color:var(--muted);line-height:1.5;margin-top:9px}
+#messages{flex:1;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:4px 2px 14px}
+.msg{max-width:90%;padding:12px 14px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.user{align-self:flex-end;background:#26364a}.assistant{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
+.error{color:#ff9c9c}.composer{display:flex;gap:8px;padding-bottom:max(5px,env(safe-area-inset-bottom))}
+#prompt{resize:none;min-height:48px;max-height:140px;flex:1}
+button{border:0;border-radius:10px;padding:0 17px;background:var(--accent);color:#17120c;font-weight:700;font-size:14px;min-height:46px}
+button:disabled{opacity:.5}#clear{background:#283142;color:var(--text);min-height:32px;padding:0 10px}
+.status{font-size:11px;color:var(--muted);padding:5px 2px}
+@media(max-width:560px){.fields{grid-template-columns:1fr}.wide{grid-column:auto}.msg{max-width:96%}}
+</style>
+</head>
+<body>
+<header><div><h1>Workers AI Chat</h1><div class="sub">Cloudflare AI · REST API</div></div><button id="clear" type="button">Clear chat</button></header>
+<main>
+<details class="settings" open>
+<summary>API settings</summary>
+<div class="fields">
+<div><label for="account">Cloudflare Account ID</label><input id="account" autocomplete="off" placeholder="Account ID"></div>
+<div><label for="model">Model ID</label><input id="model" value="@cf/meta/llama-3.1-8b-instruct" autocomplete="off"></div>
+<div class="wide"><label for="token">API token</label><input id="token" type="password" autocomplete="off" placeholder="Cloudflare API token"></div>
+</div>
+<div class="hint">Required token permission: Account → Workers AI → Read. This standalone page sends the token directly from your browser to Cloudflare. Do not publish or share this file with a saved token. For a public app, put the token in a Cloudflare Worker secret and call your Worker instead.</div>
+</details>
+<div id="messages" aria-live="polite"><div class="msg assistant">Hello! Enter your Cloudflare Account ID and API token in settings, choose a model, and send a message.</div></div>
+<div class="status" id="status">Ready</div>
+<div class="composer"><textarea id="prompt" rows="1" placeholder="Message Workers AI…"></textarea><button id="send" type="button">Send</button></div>
+</main>
+<script>
+(() => {
+ const $ = id => document.getElementById(id);
+ const messages = [];
+ let busy = false;
+ function add(role, content, extra='') {
+   const el = document.createElement('div');
+   el.className = 'msg ' + role + (extra ? ' '+extra : '');
+   el.textContent = content;
+   $('messages').appendChild(el);
+   $('messages').scrollTop = $('messages').scrollHeight;
+   return el;
+ }
+ function setBusy(value) {
+   busy = value; $('send').disabled = value;
+   $('status').textContent = value ? 'Generating…' : 'Ready';
+ }
+ async function send() {
+   if (busy) return;
+   const prompt = $('prompt').value.trim();
+   const account = $('account').value.trim();
+   const token = $('token').value.trim();
+   const model = $('model').value.trim();
+   if (!prompt) return;
+   if (!account || !token || !model) { add('assistant','Please fill in Account ID, API token, and Model ID.','error'); return; }
+   $('prompt').value = '';
+   add('user',prompt);
+   messages.push({role:'user',content:prompt});
+   const replyEl = add('assistant','');
+   setBusy(true);
+   try {
+     const url = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(account)}/ai/run/${model}`;
+     const response = await fetch(url, {
+       method:'POST',
+       headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'},
+       body:JSON.stringify({messages:messages,stream:false})
+     });
+     const raw = await response.text();
+     let data;
+     try { data = JSON.parse(raw); } catch { throw new Error(`HTTP ${response.status}: ${raw.slice(0,500)}`); }
+     if (!response.ok || data.success === false) {
+       const detail = data.errors?.map(e=>e.message).join('; ') || data.message || `HTTP ${response.status}`;
+       throw new Error(detail);
+     }
+     const result = data.result || {};
+     const answer = result.response ?? result.output_text ?? result.text ?? JSON.stringify(result,null,2);
+     replyEl.textContent = typeof answer === 'string' ? answer : JSON.stringify(answer,null,2);
+     messages.push({role:'assistant',content:replyEl.textContent});
+   } catch (err) {
+     replyEl.textContent = 'Request failed: ' + (err?.message || String(err));
+     replyEl.classList.add('error');
+     $('status').textContent = 'Request failed';
+     // Remove the unanswered user turn from future context.
+     messages.pop();
+   } finally { setBusy(false); $('prompt').focus(); }
+ }
+ $('send').addEventListener('click',send);
+ $('prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+ $('clear').addEventListener('click',()=>{messages.length=0;$('messages').replaceChildren();add('assistant','Chat cleared.');});
+})();
+</script>
+</body>
+</html>
