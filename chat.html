@@ -384,6 +384,14 @@ import { AutoModelForCausalLM, AutoTokenizer, env } from "https://cdn.jsdelivr.n
 // Keep everything client-side; allow remote model fetch from the HF CDN.
 env.allowLocalModels = false;
 
+// Pages served without cross-origin-isolation headers (file://, most
+// sandboxed previews, plain static hosting) can't hand out SharedArrayBuffer,
+// which the multi-threaded WASM build of ONNX Runtime needs. Without this,
+// it fails deep inside the wasm binary with a cryptic "abort(<number>)"
+// error. Forcing single-threaded mode avoids that entirely.
+env.backends.onnx.wasm.numThreads = 1;
+env.backends.onnx.wasm.proxy = false;
+
 // Plain instruction-tuned chat model (not the function-calling variant) —
 // simpler prompts, better suited to open-ended conversation.
 const MODEL_ID = "onnx-community/gemma-3-270m-it-ONNX";
@@ -393,6 +401,14 @@ let history = [];
 
 function stripSpecialMarkers(text) {
   return text.replace(/<end_of_turn>/g, "").trim();
+}
+
+function friendlyError(err) {
+  const msg = String((err && err.message) || err || "");
+  if (/^\s*\d+\s*$/.test(msg) || /abort/i.test(msg) || err instanceof WebAssembly.RuntimeError) {
+    return "The WASM runtime crashed during startup (raw error: " + msg + "). This is usually caused by the page running in a sandboxed context without cross-origin isolation. Try opening the standalone HTML file directly in a browser tab (not inside an iframe/preview), and make sure you're on an up-to-date Chrome, Edge, or Firefox.";
+  }
+  return msg;
 }
 
 self.onmessage = async (e) => {
@@ -418,7 +434,7 @@ self.onmessage = async (e) => {
 
       self.postMessage({ type: "ready" });
     } catch (err) {
-      self.postMessage({ type: "error", payload: String(err && err.message || err) });
+      self.postMessage({ type: "error", payload: friendlyError(err) });
     }
     return;
   }
@@ -447,7 +463,7 @@ self.onmessage = async (e) => {
 
       self.postMessage({ type: "complete", payload: { text } });
     } catch (err) {
-      self.postMessage({ type: "gen_error", payload: String(err && err.message || err) });
+      self.postMessage({ type: "gen_error", payload: friendlyError(err) });
     }
     return;
   }
