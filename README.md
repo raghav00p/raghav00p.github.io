@@ -1,7 +1,9 @@
 # web tutorials
 ## [1. pwa](https://raghav00p.github.io)
 ## [2. flashcards](https://raghav00p.github.io/flashcards.html)
-## [2. inspector](https://raghav00p.github.io/inspector.html)
+## [3. inspector](https://raghav00p.github.io/inspector.html)
+## [4. chat](https://raghav00p.github.io/chat.html)
+
 
 
 ### Deploying the PWA 🚀
