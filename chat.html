@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>FunctionGemma — Local Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1f2330;
+    --border: #2a2f3d;
+    --text: #e8e9ed;
+    --text-dim: #9aa0ad;
+    --accent: #7c9eff;
+    --accent-2: #5ad1a8;
+    --user-bubble: #2b3657;
+    --bot-bubble: #1f2330;
+    --tool-bubble: #26321f;
+    --danger: #ff6b6b;
+    --radius: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: radial-gradient(ellipse at top, #161a22 0%, #0b0d11 60%);
+    color: var(--text);
+  }
+  #app {
+    max-width: 760px;
+    margin: 0 auto;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0 16px;
+  }
+  header {
+    padding: 18px 4px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-size: 17px;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header h1 .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--text-dim);
+    display: inline-block;
+    transition: background 0.3s;
+  }
+  header h1 .dot.ready { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+  header h1 .dot.busy { background: #f6c177; box-shadow: 0 0 8px #f6c177; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  header p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  header p code { color: var(--accent); }
+
+  #setup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    text-align: center;
+    padding: 24px 0;
+  }
+  #setup .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 26px;
+    max-width: 480px;
+    width: 100%;
+  }
+  #setup .card h2 { margin: 0 0 10px; font-size: 16px; }
+  #setup .card p { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin: 0 0 16px; }
+  .opt-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .opt {
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    cursor: pointer;
+    color: var(--text-dim);
+    text-align: left;
+    width: 190px;
+  }
+  .opt.selected { border-color: var(--accent); color: var(--text); background: #1c2236; }
+  .opt b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+  button.primary {
+    background: linear-gradient(135deg, var(--accent), #5a7ee0);
+    border: none;
+    color: #0b0d11;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 11px 22px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  button.primary:disabled { opacity: 0.5; cursor: default; }
+  button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+
+  #progress-wrap { width: 100%; margin-top: 16px; display: none; }
+  #progress-wrap.show { display: block; }
+  .bar-bg {
+    width: 100%; height: 8px; border-radius: 6px;
+    background: var(--panel-2); overflow: hidden; border: 1px solid var(--border);
+  }
+  .bar-fg {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.2s ease;
+  }
+  #progress-label {
+    font-size: 11.5px; color: var(--text-dim); margin-top: 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  #chat-area { flex: 1; display: none; flex-direction: column; min-height: 0; }
+  #chat-area.show { display: flex; }
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg { display: flex; }
+  .msg.user { justify-content: flex-end; }
+  .msg.bot, .msg.tool { justify-content: flex-start; }
+  .bubble {
+    max-width: 82%;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 14.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg.user .bubble { background: var(--user-bubble); border-bottom-right-radius: 4px; }
+  .msg.bot .bubble { background: var(--bot-bubble); border-bottom-left-radius: 4px; border: 1px solid var(--border); }
+  .msg.tool .bubble {
+    background: var(--tool-bubble);
+    border: 1px dashed #3c5230;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    color: #bfe3a0;
+  }
+  .typing { display: inline-flex; gap: 4px; align-items: center; height: 14px; }
+  .typing span {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%,60%,100%{ transform: translateY(0); opacity: 0.4 } 30%{ transform: translateY(-4px); opacity: 1 } }
+
+  #examples {
+    display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 2px 4px; flex-shrink: 0;
+  }
+  .ex-chip {
+    font-size: 12px; color: var(--text-dim); background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; cursor: pointer;
+  }
+  .ex-chip:hover { color: var(--text); border-color: var(--accent); }
+
+  #input-row {
+    display: flex; gap: 8px; padding: 10px 2px 16px; flex-shrink: 0;
+  }
+  #input-row textarea {
+    flex: 1;
+    resize: none;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 14.5px;
+    padding: 11px 14px;
+    font-family: inherit;
+    max-height: 120px;
+  }
+  #input-row textarea:focus { outline: none; border-color: var(--accent); }
+  #input-row button {
+    background: var(--accent);
+    border: none;
+    color: #0b0d11;
+    font-weight: 700;
+    border-radius: 12px;
+    padding: 0 18px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  #input-row button:disabled { opacity: 0.4; cursor: default; }
+
+  #err-banner {
+    display: none;
+    background: #2a1414; border: 1px solid var(--danger); color: #ffb3b3;
+    border-radius: 10px; padding: 10px 14px; font-size: 12.5px; margin: 10px 2px;
+  }
+  #err-banner.show { display: block; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #2a2f3d; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1><span class="dot" id="status-dot"></span> FunctionGemma 270M — runs fully in your browser</h1>
+    <p>Small on-device model (<code>onnx-community/functiongemma-270m-it-ONNX</code>) specialized for <b>function calling</b>, served via Transformers.js + ONNX Runtime Web. Nothing you type leaves this page — after the one-time model download, it works offline.</p>
+  </header>
+
+  <div id="setup">
+    <div class="card">
+      <h2>Load the model</h2>
+      <p>Downloads once (~a few hundred MB) and is cached by your browser. Pick how it should run:</p>
+      <div class="opt-row">
+        <div class="opt selected" data-mode="wasm" id="opt-wasm">
+          <b>CPU · WASM (recommended)</b>
+          Quantized weights, works everywhere, no known glitches.
+        </div>
+        <div class="opt" data-mode="webgpu" id="opt-webgpu">
+          <b>WebGPU (experimental)</b>
+          Full precision, faster on supported GPUs.
+        </div>
+      </div>
+      <button class="primary" id="load-btn">Load model</button>
+      <div id="progress-wrap">
+        <div class="bar-bg"><div class="bar-fg" id="bar-fg"></div></div>
+        <div id="progress-label">Starting…</div>
+      </div>
+    </div>
+    <div id="err-banner"></div>
+  </div>
+
+  <div id="chat-area">
+    <div id="messages"></div>
+    <div id="examples">
+      <div class="ex-chip" data-ex="What's the weather in Tokyo?">🌤️ Weather in Tokyo?</div>
+      <div class="ex-chip" data-ex="What time is it in New York?">🕒 Time in New York?</div>
+      <div class="ex-chip" data-ex="Calculate 23 * 17 + 4">🧮 Calculate 23×17+4</div>
+      <div class="ex-chip" data-ex="Tell me a fun fact about octopuses.">💬 Just chat</div>
+    </div>
+    <div id="input-row">
+      <textarea id="input" rows="1" placeholder="Ask about weather, time, a calculation… or just chat" disabled></textarea>
+      <button id="send-btn" disabled>Send</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+const WORKER_SRC = document.getElementById('worker-src').textContent;
+const blob = new Blob([WORKER_SRC], { type: 'text/javascript' });
+const worker = new Worker(URL.createObjectURL(blob), { type: 'module' });
+
+const statusDot = document.getElementById('status-dot');
+const setupEl = document.getElementById('setup');
+const chatArea = document.getElementById('chat-area');
+const loadBtn = document.getElementById('load-btn');
+const progressWrap = document.getElementById('progress-wrap');
+const barFg = document.getElementById('bar-fg');
+const progressLabel = document.getElementById('progress-label');
+const errBanner = document.getElementById('err-banner');
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('input');
+const sendBtn = document.getElementById('send-btn');
+const optWasm = document.getElementById('opt-wasm');
+const optWebgpu = document.getElementById('opt-webgpu');
+
+let mode = 'wasm';
+let busy = false;
+
+if (!navigator.gpu) {
+  optWebgpu.style.opacity = 0.4;
+  optWebgpu.style.pointerEvents = 'none';
+  optWebgpu.querySelector('b').textContent += ' (unavailable)';
+}
+
+optWasm.addEventListener('click', () => { mode = 'wasm'; optWasm.classList.add('selected'); optWebgpu.classList.remove('selected'); });
+optWebgpu.addEventListener('click', () => {
+  if (!navigator.gpu) return;
+  mode = 'webgpu'; optWebgpu.classList.add('selected'); optWasm.classList.remove('selected');
+});
+
+function showError(msg) {
+  errBanner.textContent = msg;
+  errBanner.classList.add('show');
+}
+
+function setBusy(v) {
+  busy = v;
+  statusDot.className = 'dot ' + (v ? 'busy' : 'ready');
+  inputEl.disabled = v;
+  sendBtn.disabled = v;
+}
+
+function scrollDown() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+
+function addBubble(role, text) {
+  const row = document.createElement('div');
+  row.className = 'msg ' + role;
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.textContent = text;
+  row.appendChild(b);
+  messagesEl.appendChild(row);
+  scrollDown();
+  return b;
+}
+
+function addTypingBubble() {
+  const row = document.createElement('div');
+  row.className = 'msg bot';
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+  row.appendChild(b);
+  messagesEl.appendChild(row);
+  scrollDown();
+  return b;
+}
+
+loadBtn.addEventListener('click', () => {
+  loadBtn.disabled = true;
+  progressWrap.classList.add('show');
+  errBanner.classList.remove('show');
+  worker.postMessage({ type: 'load', payload: { device: mode } });
+});
+
+let fileProgress = {};
+worker.addEventListener('message', (e) => {
+  const { type, payload } = e.data;
+
+  if (type === 'loading') {
+    if (payload.status === 'progress' || payload.status === 'download' || payload.status === 'initiate') {
+      if (payload.file) {
+        fileProgress[payload.file] = payload.progress || fileProgress[payload.file] || 0;
+      }
+      const vals = Object.values(fileProgress);
+      const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      barFg.style.width = Math.min(100, avg).toFixed(0) + '%';
+      progressLabel.textContent = payload.file
+        ? `Downloading ${payload.file} — ${Math.min(100, avg).toFixed(0)}%`
+        : 'Preparing…';
+    }
+  } else if (type === 'ready') {
+    progressLabel.textContent = 'Model ready.';
+    barFg.style.width = '100%';
+    setTimeout(() => {
+      setupEl.style.display = 'none';
+      chatArea.classList.add('show');
+      setBusy(false);
+      addBubble('bot', "Hi! I'm a tiny 270M-parameter model fine-tuned for function calling, running entirely on your device. Try asking about weather, time, or a calculation — or just say hello.");
+      inputEl.focus();
+    }, 300);
+  } else if (type === 'error') {
+    loadBtn.disabled = false;
+    showError('⚠️ ' + payload);
+  } else if (type === 'tool_call') {
+    addBubble('tool', `🔧 calling ${payload.name}(${JSON.stringify(payload.args)}) → ${JSON.stringify(payload.result)}`);
+  } else if (type === 'thinking') {
+    window.__typingBubble = addTypingBubble();
+  } else if (type === 'complete') {
+    if (window.__typingBubble) { window.__typingBubble.parentElement.remove(); window.__typingBubble = null; }
+    addBubble('bot', payload.text || '…');
+    setBusy(false);
+  } else if (type === 'gen_error') {
+    if (window.__typingBubble) { window.__typingBubble.parentElement.remove(); window.__typingBubble = null; }
+    addBubble('bot', '⚠️ ' + payload);
+    setBusy(false);
+  }
+});
+
+function send(text) {
+  text = text.trim();
+  if (!text || busy) return;
+  addBubble('user', text);
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  setBusy(true);
+  worker.postMessage({ type: 'generate', payload: { text } });
+}
+
+sendBtn.addEventListener('click', () => send(inputEl.value));
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(inputEl.value); }
+});
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(120, inputEl.scrollHeight) + 'px';
+});
+document.querySelectorAll('.ex-chip').forEach(chip => {
+  chip.addEventListener('click', () => send(chip.dataset.ex));
+});
+</script>
+
+<script type="application/not-js" id="worker-src">
+import { AutoModelForCausalLM, AutoTokenizer, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm";
+
+// Keep everything client-side; allow remote model fetch from the HF CDN.
+env.allowLocalModels = false;
+
+const MODEL_ID = "onnx-community/functiongemma-270m-it-ONNX";
+
+let tokenizer, model;
+
+// ---- Local "tools" the model is allowed to call -------------------------
+
+const TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "get_current_weather",
+      description: "Gets the current weather for a given city.",
+      parameters: {
+        type: "object",
+        properties: {
+          location: { type: "string", description: "The city name, e.g. Tokyo" },
+          unit: { type: "string", enum: ["celsius", "fahrenheit"], description: "Temperature unit" },
+        },
+        required: ["location"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_current_time",
+      description: "Gets the current date and time, optionally for a specific city or IANA timezone.",
+      parameters: {
+        type: "object",
+        properties: {
+          location: { type: "string", description: "A city name, e.g. New York, or an IANA timezone like Asia/Tokyo" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "calculate",
+      description: "Evaluates a basic arithmetic expression and returns the numeric result.",
+      parameters: {
+        type: "object",
+        properties: {
+          expression: { type: "string", description: "An arithmetic expression, e.g. 23 * 17 + 4" },
+        },
+        required: ["expression"],
+      },
+    },
+  },
+];
+
+const CITY_TZ = {
+  tokyo: "Asia/Tokyo", "new york": "America/New_York", london: "Europe/London",
+  paris: "Europe/Paris", berlin: "Europe/Berlin", moscow: "Europe/Moscow",
+  "los angeles": "America/Los_Angeles", sydney: "Australia/Sydney",
+  mumbai: "Asia/Kolkata", delhi: "Asia/Kolkata", beijing: "Asia/Shanghai",
+  shanghai: "Asia/Shanghai", dubai: "Asia/Dubai", singapore: "Asia/Singapore",
+  "sao paulo": "America/Sao_Paulo", toronto: "America/Toronto", chicago: "America/Chicago",
+};
+
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+
+function runTool(name, args) {
+  try {
+    if (name === "get_current_weather") {
+      const loc = (args.location || "your area").toString();
+      const unit = args.unit === "fahrenheit" ? "fahrenheit" : "celsius";
+      const h = hashStr(loc.toLowerCase());
+      const conditions = ["sunny", "partly cloudy", "overcast", "light rain", "clear skies", "windy"];
+      let tempC = 8 + (h % 27); // 8..34 C, deterministic per city
+      const temperature = unit === "fahrenheit" ? Math.round(tempC * 9 / 5 + 32) : tempC;
+      return { location: loc, temperature, unit, condition: conditions[h % conditions.length], note: "simulated — demo data, not live" };
+    }
+    if (name === "get_current_time") {
+      const loc = (args.location || "").toString().trim().toLowerCase();
+      const tz = CITY_TZ[loc] || (loc.includes("/") ? args.location : undefined);
+      const now = new Date();
+      const formatted = tz
+        ? now.toLocaleString("en-US", { timeZone: tz, dateStyle: "medium", timeStyle: "short" })
+        : now.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+      return { location: args.location || "local", datetime: formatted, timezone: tz || "local browser timezone" };
+    }
+    if (name === "calculate") {
+      const expr = (args.expression || "").toString();
+      if (!/^[0-9+\-*/().%\s]+$/.test(expr)) return { error: "expression contains disallowed characters" };
+      // eslint-disable-next-line no-new-func
+      const result = Function('"use strict"; return (' + expr + ')')();
+      return { expression: expr, result };
+    }
+    return { error: "unknown function " + name };
+  } catch (err) {
+    return { error: String(err && err.message || err) };
+  }
+}
+
+// ---- Function-call parsing (FunctionGemma's custom token format) --------
+
+function extractToolCalls(text) {
+  const calls = [];
+  const callRe = /<start_function_call>call:(\w+)\{(.*?)\}<end_function_call>/gs;
+  let m;
+  while ((m = callRe.exec(text))) {
+    const name = m[1];
+    const argsStr = m[2];
+    const args = {};
+    const argRe = /(\w+):(?:<escape>([\s\S]*?)<escape>|([^,}]*))/g;
+    let am;
+    while ((am = argRe.exec(argsStr))) {
+      const key = am[1];
+      let val = am[2] !== undefined ? am[2] : am[3];
+      if (val === undefined) continue;
+      val = val.trim();
+      if (val === "true") val = true;
+      else if (val === "false") val = false;
+      else if (val !== "" && !isNaN(Number(val))) val = Number(val);
+      args[key] = val;
+    }
+    calls.push({ name, args });
+  }
+  return calls;
+}
+
+function stripSpecialMarkers(text) {
+  return text
+    .replace(/<start_function_call>[\s\S]*?<end_function_call>/g, "")
+    .replace(/<start_function_response>[\s\S]*$/g, "")
+    .replace(/<end_of_turn>/g, "")
+    .trim();
+}
+
+// ---- Main message handling ----------------------------------------------
+
+self.onmessage = async (e) => {
+  const { type, payload } = e.data;
+
+  if (type === "load") {
+    try {
+      const device = payload.device === "webgpu" ? "webgpu" : "wasm";
+      const dtype = device === "webgpu" ? "fp32" : "q4f16";
+
+      const progress_callback = (p) => {
+        self.postMessage({ type: "loading", payload: p });
+      };
+
+      tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID, { progress_callback });
+      model = await AutoModelForCausalLM.from_pretrained(MODEL_ID, {
+        dtype,
+        device,
+        progress_callback,
+      });
+
+      self.postMessage({ type: "ready" });
+    } catch (err) {
+      self.postMessage({ type: "error", payload: String(err && err.message || err) });
+    }
+    return;
+  }
+
+  if (type === "generate") {
+    try {
+      self.postMessage({ type: "thinking" });
+
+      const developerMsg = {
+        role: "developer",
+        content: "You are a model that can do function calling with the following functions. If the user's message does not need a function, just reply normally and helpfully in plain text.",
+      };
+      let messages = [developerMsg, { role: "user", content: payload.text }];
+
+      let finalText = await runOnePass(messages, 0);
+      self.postMessage({ type: "complete", payload: { text: finalText } });
+    } catch (err) {
+      self.postMessage({ type: "gen_error", payload: String(err && err.message || err) });
+    }
+    return;
+  }
+};
+
+async function runOnePass(messages, depth) {
+  const inputs = tokenizer.apply_chat_template(messages, {
+    tools: TOOLS,
+    tokenize: true,
+    add_generation_prompt: true,
+    return_dict: true,
+  });
+
+  const promptLen = inputs.input_ids.dims[1];
+  const output = await model.generate({ ...inputs, max_new_tokens: 256, do_sample: false });
+  const fullIds = output.tolist()[0].map((x) => Number(x));
+  const newIds = fullIds.slice(promptLen);
+
+  const rawDecoded = tokenizer.decode(newIds, { skip_special_tokens: false });
+  const calls = extractToolCalls(rawDecoded);
+
+  if (calls.length === 0 || depth > 1) {
+    const clean = tokenizer.decode(newIds, { skip_special_tokens: true });
+    const text = stripSpecialMarkers(clean) || stripSpecialMarkers(rawDecoded) || "(no response)";
+    return text;
+  }
+
+  // Execute each requested tool call locally, report it to the UI, then feed
+  // the result(s) back to the model for a final, user-facing reply.
+  const toolContent = [];
+  for (const call of calls) {
+    const result = runTool(call.name, call.args);
+    self.postMessage({ type: "tool_call", payload: { name: call.name, args: call.args, result } });
+    toolContent.push({ name: call.name, response: result });
+  }
+
+  const nextMessages = [
+    ...messages,
+    { role: "tool", content: toolContent.length === 1 ? toolContent[0] : toolContent },
+  ];
+
+  return runOnePass(nextMessages, depth + 1);
+}
+</script>
+</body>
+</html>
